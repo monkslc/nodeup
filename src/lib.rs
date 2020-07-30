@@ -3,7 +3,15 @@ use dirs::home_dir;
 use flate2::read::GzDecoder;
 use reqwest::{blocking, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, fs::OpenOptions, io::Read, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs,
+    fs::OpenOptions,
+    io::Read,
+    os::unix::{fs::symlink, process::CommandExt},
+    path::PathBuf,
+    process::Command,
+};
 use tar::Archive;
 
 mod version;
@@ -147,6 +155,57 @@ pub fn active_versions() -> Result<()> {
     });
 
     Ok(())
+}
+
+pub fn link() -> Result<()> {
+    let mut bin_dir = get_nodeup_dir()?;
+    bin_dir.push("bin");
+    fs::create_dir_all(&bin_dir).context("Error creating bin dir")?;
+
+    let nodeup_path = bin_dir.as_path().join("nodeup");
+
+    let node_path = bin_dir.as_path().join("node");
+    symlink(&nodeup_path, node_path).context("Error symlinking node")?;
+
+    let npm_path = bin_dir.as_path().join("npm");
+    symlink(&nodeup_path, npm_path).context("Error symlinking npm")?;
+
+    let npx_path = bin_dir.as_path().join("npx");
+    symlink(&nodeup_path, npx_path).context("Error symlinking npx")?;
+
+    Ok(())
+}
+
+pub fn execute_node<I: std::iter::Iterator<Item = String>>(args: I) -> Result<()> {
+    let config = get_config_file()?;
+    if let Some(version) = config.version_mappings.get("default") {
+        let bin_path = get_nodeup_dir()?
+            .join("node")
+            .join(version)
+            .join("bin")
+            .join("node");
+
+        Command::new(&bin_path).args(args).exec();
+        Err(anyhow!("Failed to execute bin at path: {:?}", bin_path))
+    } else {
+        Err(anyhow!("No default version found"))
+    }
+}
+
+pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> Result<()> {
+    let config = get_config_file()?;
+    if let Some(version) = config.version_mappings.get("default") {
+        let bin_path = get_nodeup_dir()?
+            .join("node")
+            .join(version)
+            .join("bin")
+            .join(bin);
+
+        Command::new(&bin_path).args(args).exec();
+        Err(anyhow!("Failed to execute bin at path: {:?}", bin_path))
+    } else {
+        Err(anyhow!("No default version found"))
+    }
 }
 
 #[cfg(test)]
