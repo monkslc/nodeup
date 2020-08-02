@@ -31,6 +31,11 @@ fn nodeup_command() -> anyhow::Result<()> {
         )
         .subcommand(App::new("active").about("show active node versions for each override"))
         .subcommand(App::new("link").about("link node, npm and npx binaries"))
+        .subcommand(
+            App::new("remove")
+                .about("set the default node version")
+                .arg(Arg::with_name("version").index(1).required(true)),
+        )
         .get_matches();
 
     match args.subcommand() {
@@ -57,6 +62,13 @@ fn nodeup_command() -> anyhow::Result<()> {
         ("link", _) => {
             nodeup::link()?;
             println!("Add the following to your .bashrc:\nexport PATH=\"$HOME/.nodeup/bin/\":$PATH")
+        }
+        ("remove", args) => {
+            // safe to unwrap because version is required
+            let version = args.unwrap().value_of("version").expect("Version required");
+            let version = nodeup::Version::parse(version)?;
+            nodeup::remove_node(version)?;
+            println!("{} successfully removed", version);
         }
         _ => todo!(),
     }

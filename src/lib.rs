@@ -68,6 +68,20 @@ pub fn download_node(version: Version) -> Result<()> {
     }
 }
 
+// TODO: check that the version is installed before removing
+pub fn remove_node(version: Version) -> Result<()> {
+    let path = get_nodeup_dir()?
+        .join("node")
+        .join(get_node_arch_string(version));
+    fs::remove_dir_all(path).with_context(|| {
+        format!(
+            "Error removing node version: {}. Maybe it wasn't installed?",
+            version
+        )
+    })?;
+    Ok(())
+}
+
 pub fn list_versions() -> Result<()> {
     let mut node_dir = get_nodeup_dir()?;
     node_dir.push("node");
