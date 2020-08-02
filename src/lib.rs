@@ -64,7 +64,7 @@ pub fn get_latest_lts() -> Result<Version> {
         .into_iter()
         .filter_map(|v| match v.lts {
             LTSVersion::Yes(_) => Some(
-                Version::parse(&v.version[1..])
+                Version::parse(&v.version)
                     .expect(&format!("Error parsing verson from node registry: {:?}", v)),
             ),
             _ => None,

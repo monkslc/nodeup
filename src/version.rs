@@ -13,7 +13,10 @@ pub struct Version {
 
 impl Version {
     pub fn parse(content: &str) -> Result<Version> {
-        let rest = content;
+        let rest = match content.chars().next() {
+            Some('v') => &content[1..],
+            _ => content,
+        };
 
         let (major, rest) = parse_number(rest)
             .with_context(|| format!("Error parsing major version from content: {}", content))?;
@@ -101,13 +104,18 @@ mod tests {
 
     #[test]
     fn parse_version() {
-        let content = "12.15.1";
-        let actual = Version::parse(content).unwrap();
         let expected = Version {
             major: 12,
             minor: 15,
             patch: 1,
         };
+
+        let content = "12.15.1";
+        let actual = Version::parse(content).unwrap();
+        assert_eq!(actual, expected);
+
+        let content = "v12.15.1";
+        let actual = Version::parse(content).unwrap();
         assert_eq!(actual, expected);
     }
 }
