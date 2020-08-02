@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Context, Result};
-use std::fmt;
+use std::{
+    cmp::{Ord, Ordering, PartialOrd},
+    fmt,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
@@ -37,6 +40,24 @@ impl Version {
             minor,
             patch,
         })
+    }
+}
+
+impl PartialOrd for Version {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Version {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.major.cmp(&other.major) {
+            Ordering::Equal => match self.minor.cmp(&other.minor) {
+                Ordering::Equal => self.patch.cmp(&other.patch),
+                o => o,
+            },
+            o => o,
+        }
     }
 }
 

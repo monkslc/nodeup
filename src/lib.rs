@@ -42,6 +42,39 @@ fn get_node_arch_string(version: Version) -> String {
     format!("node-{}-{}-x64", version, OS)
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct AvailableVersion {
+    version: String,
+    lts: LTSVersion,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+enum LTSVersion {
+    Yes(String),
+    No(bool),
+}
+
+pub fn get_latest_lts() -> Result<Version> {
+    let url = format!("{}index.json", BASE_URL);
+    let resp = blocking::get(&url)
+        .with_context(|| format!("Request to Node distribution registry: {}", url))?;
+    let all_versions: Vec<AvailableVersion> = serde_json::from_reader(resp)?;
+    let latest_lts = all_versions
+        .into_iter()
+        .filter_map(|v| match v.lts {
+            LTSVersion::Yes(_) => Some(
+                Version::parse(&v.version[1..])
+                    .expect(&format!("Error parsing verson from node registry: {:?}", v)),
+            ),
+            _ => None,
+        })
+        .max()
+        .expect("Received no lts versions from the node distribution registry");
+
+    Ok(latest_lts)
+}
+
 fn get_nodeup_dir() -> Result<PathBuf> {
     let mut home_dir = home_dir().ok_or(anyhow!("Error getting home directory"))?;
     home_dir.push(".nodeup");

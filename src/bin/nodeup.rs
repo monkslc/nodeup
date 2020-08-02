@@ -36,6 +36,7 @@ fn nodeup_command() -> anyhow::Result<()> {
                 .about("set the default node version")
                 .arg(Arg::with_name("version").index(1).required(true)),
         )
+        .subcommand(App::new("lts").about("print the latest long term support version of node"))
         .get_matches();
 
     match args.subcommand() {
@@ -69,6 +70,10 @@ fn nodeup_command() -> anyhow::Result<()> {
             let version = nodeup::Version::parse(version)?;
             nodeup::remove_node(version)?;
             println!("{} successfully removed", version);
+        }
+        ("lts", _) => {
+            let version = nodeup::get_latest_lts()?;
+            println!("{}", version)
         }
         _ => todo!(),
     }
