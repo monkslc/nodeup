@@ -20,6 +20,15 @@ pub use version::Version;
 
 // Full url example: https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz
 const BASE_URL: &'static str = "https://nodejs.org/dist/";
+const BIN_DIR: &'static str = "bin";
+const BIN_NODE: &'static str = "node";
+const BIN_NODEUP: &'static str = "nodeup";
+const BIN_NPM: &'static str = "npm";
+const BIN_NPX: &'static str = "npx";
+const INSTALL_DIR: &'static str = "node";
+const NODEUP_DIR: &'static str = ".nodeup";
+const SETTINGS_FILE: &'static str = "settings.toml";
+const UPDATED_SETTINGS_FILE_TEMP: &'static str = ".updated.settings.toml";
 
 #[cfg(target_os = "macos")]
 static OS: &str = "darwin";
@@ -76,9 +85,11 @@ pub fn get_latest_lts() -> Result<Version> {
 }
 
 fn get_nodeup_dir() -> Result<PathBuf> {
-    let mut home_dir = home_dir().ok_or(anyhow!("Error getting home directory"))?;
-    home_dir.push(".nodeup");
-    Ok(home_dir)
+    let nodeup_dir = home_dir()
+        .ok_or(anyhow!("Error getting home directory"))?
+        .join(NODEUP_DIR);
+
+    Ok(nodeup_dir)
 }
 
 pub fn download_node(version: Version) -> Result<()> {
@@ -87,8 +98,7 @@ pub fn download_node(version: Version) -> Result<()> {
         blocking::get(&url).with_context(|| format!("Failed to make request to {}", url))?;
     match tar_gzip.status() {
         StatusCode::OK => {
-            let mut node_dir = get_nodeup_dir()?;
-            node_dir.push("node");
+            let node_dir = get_nodeup_dir()?.join(INSTALL_DIR);
 
             let tar = GzDecoder::new(tar_gzip);
             let mut arc = Archive::new(tar);
@@ -104,7 +114,7 @@ pub fn download_node(version: Version) -> Result<()> {
 // TODO: check that the version is installed before removing
 pub fn remove_node(version: Version) -> Result<()> {
     let path = get_nodeup_dir()?
-        .join("node")
+        .join(INSTALL_DIR)
         .join(get_node_arch_string(version));
     fs::remove_dir_all(path).with_context(|| {
         format!(
@@ -116,8 +126,7 @@ pub fn remove_node(version: Version) -> Result<()> {
 }
 
 pub fn list_versions() -> Result<()> {
-    let mut node_dir = get_nodeup_dir()?;
-    node_dir.push("node");
+    let node_dir = get_nodeup_dir()?.join(INSTALL_DIR);
     let entries =
         fs::read_dir(node_dir).context("Error reading entries in directory: ~/.nodeup/node")?;
     entries.for_each(|entry| {
@@ -150,8 +159,7 @@ struct ConfigDTO {
 }
 
 fn get_config_file() -> Result<Config> {
-    let mut config_file = get_nodeup_dir()?;
-    config_file.push("settings.toml");
+    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
 
     let mut file = OpenOptions::new()
         .read(true)
@@ -181,14 +189,12 @@ pub fn change_default_version(version: Version) -> Result<()> {
 
     let updated_contents = toml::to_vec(&config).context("Error serializing contents")?;
 
-    let mut updated_config_file = get_nodeup_dir()?;
-    updated_config_file.push(".updated.settings.toml");
+    let updated_config_file = get_nodeup_dir()?.join(UPDATED_SETTINGS_FILE_TEMP);
 
     fs::write(&updated_config_file, updated_contents)
         .context("Error writing updated config file .updated.settings.toml")?;
 
-    let mut config_file = get_nodeup_dir()?;
-    config_file.push("settings.toml");
+    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
     fs::rename(&updated_config_file, config_file)
         .context("Error writing updates to settings.toml")?;
 
@@ -205,19 +211,18 @@ pub fn active_versions() -> Result<()> {
 }
 
 pub fn link() -> Result<()> {
-    let mut bin_dir = get_nodeup_dir()?;
-    bin_dir.push("bin");
+    let bin_dir = get_nodeup_dir()?.join(BIN_DIR);
     fs::create_dir_all(&bin_dir).context("Error creating bin dir")?;
 
-    let nodeup_path = bin_dir.as_path().join("nodeup");
+    let nodeup_path = bin_dir.as_path().join(BIN_NODEUP);
 
-    let node_path = bin_dir.as_path().join("node");
+    let node_path = bin_dir.as_path().join(BIN_NODE);
     symlink(&nodeup_path, node_path).context("Error symlinking node")?;
 
-    let npm_path = bin_dir.as_path().join("npm");
+    let npm_path = bin_dir.as_path().join(BIN_NPM);
     symlink(&nodeup_path, npm_path).context("Error symlinking npm")?;
 
-    let npx_path = bin_dir.as_path().join("npx");
+    let npx_path = bin_dir.as_path().join(BIN_NPX);
     symlink(&nodeup_path, npx_path).context("Error symlinking npx")?;
 
     Ok(())
