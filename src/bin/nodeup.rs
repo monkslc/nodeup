@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use std::env;
 
-use nodeup;
+use nodeup::{Target, Version};
 
 fn main() -> anyhow::Result<()> {
     let mut args = env::args();
@@ -43,9 +43,10 @@ fn nodeup_command() -> anyhow::Result<()> {
         ("install", args) => {
             // safe to unwrap because version is required
             let version = args.unwrap().value_of("version").expect("Version required");
-            let version = nodeup::Version::parse(version)?;
-            println!("Installing node {}...", version);
-            nodeup::download_node(version)?;
+            let version = Version::parse(version)?;
+            let target = Target::from_version(version);
+            println!("Installing {}...", target);
+            nodeup::download_node(target)?;
         }
         ("list", _) => {
             nodeup::list_versions()?;
@@ -54,8 +55,9 @@ fn nodeup_command() -> anyhow::Result<()> {
             // safe to unwrap because version is required
             let version = args.unwrap().value_of("version").expect("Version required");
             let version = nodeup::Version::parse(version)?;
-            println!("Changing the default node version to {}", version);
-            nodeup::change_default_version(version)?;
+            let target = Target::from_version(version);
+            println!("Changing the default node version to {}...", version);
+            nodeup::change_default_target(target)?;
         }
         ("active", _) => {
             nodeup::active_versions()?;
@@ -68,7 +70,8 @@ fn nodeup_command() -> anyhow::Result<()> {
             // safe to unwrap because version is required
             let version = args.unwrap().value_of("version").expect("Version required");
             let version = nodeup::Version::parse(version)?;
-            nodeup::remove_node(version)?;
+            let target = Target::from_version(version);
+            nodeup::remove_node(target)?;
             println!("{} successfully removed", version);
         }
         ("lts", _) => {

@@ -14,11 +14,10 @@ use std::{
 };
 use tar::Archive;
 
-mod version;
+mod target;
 
-pub use version::Version;
+pub use target::{Target, Version};
 
-// Full url example: https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz
 const BASE_URL: &'static str = "https://nodejs.org/dist/";
 const BIN_DIR: &'static str = "bin";
 const BIN_NODE: &'static str = "node";
@@ -30,25 +29,10 @@ const NODEUP_DIR: &'static str = ".nodeup";
 const SETTINGS_FILE: &'static str = "settings.toml";
 const UPDATED_SETTINGS_FILE_TEMP: &'static str = ".updated.settings.toml";
 
-#[cfg(target_os = "macos")]
-static OS: &str = "darwin";
-#[cfg(target_os = "linux")]
-static OS: &str = "linux";
-#[cfg(target_os = "windows")]
-static OS: &str = "win";
-
-fn get_node_download_url(version: Version) -> String {
-    let full_url = format!(
-        "{}{}/{}.tar.gz",
-        BASE_URL,
-        version,
-        get_node_arch_string(version)
-    );
+// Full url example: https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz
+fn get_node_download_url(target: Target) -> String {
+    let full_url = format!("{}{}/{}.tar.gz", BASE_URL, target.version(), target);
     full_url
-}
-
-fn get_node_arch_string(version: Version) -> String {
-    format!("node-{}-{}-x64", version, OS)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -92,8 +76,8 @@ fn get_nodeup_dir() -> Result<PathBuf> {
     Ok(nodeup_dir)
 }
 
-pub fn download_node(version: Version) -> Result<()> {
-    let url = get_node_download_url(version);
+pub fn download_node(target: Target) -> Result<()> {
+    let url = get_node_download_url(target);
     let tar_gzip =
         blocking::get(&url).with_context(|| format!("Failed to make request to {}", url))?;
     match tar_gzip.status() {
@@ -106,22 +90,16 @@ pub fn download_node(version: Version) -> Result<()> {
                 .with_context(|| format!("Failed to unpack node into directory: {}", "."))?;
             Ok(())
         }
-        StatusCode::NOT_FOUND => Err(anyhow!("Version: {} does not exist", version)),
+        StatusCode::NOT_FOUND => Err(anyhow!("{} does not exist", target)),
         code => Err(anyhow!("Unknown Error: {}", code)),
     }
 }
 
 // TODO: check that the version is installed before removing
-pub fn remove_node(version: Version) -> Result<()> {
-    let path = get_nodeup_dir()?
-        .join(INSTALL_DIR)
-        .join(get_node_arch_string(version));
-    fs::remove_dir_all(path).with_context(|| {
-        format!(
-            "Error removing node version: {}. Maybe it wasn't installed?",
-            version
-        )
-    })?;
+pub fn remove_node(target: Target) -> Result<()> {
+    let path = get_nodeup_dir()?.join(INSTALL_DIR).join(target.to_string());
+    fs::remove_dir_all(path)
+        .with_context(|| format!("Error removing {}. Maybe it wasn't installed?", target))?;
     Ok(())
 }
 
@@ -179,15 +157,13 @@ fn get_config_file() -> Result<Config> {
 }
 
 // TODO: check that the version is installed
-pub fn change_default_version(version: Version) -> Result<()> {
-    let arch_string = get_node_arch_string(version);
-
+pub fn change_default_target(target: Target) -> Result<()> {
     let mut config = get_config_file()?;
     config
         .version_mappings
-        .insert(String::from("default"), arch_string);
+        .insert(String::from("default"), target.to_string());
 
-    let updated_contents = toml::to_vec(&config).context("Error serializing contents")?;
+    let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
     let updated_config_file = get_nodeup_dir()?.join(UPDATED_SETTINGS_FILE_TEMP);
 
@@ -272,7 +248,7 @@ mod tests {
             patch: 1,
         };
 
-        let actual = get_node_download_url(version);
+        let actual = get_node_download_url(Target::from_version(version));
         let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz";
         assert_eq!(actual, expected);
     }
