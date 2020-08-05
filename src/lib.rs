@@ -1,7 +1,5 @@
 use anyhow::{anyhow, Context, Result};
 use dirs::home_dir;
-use flate2::read::GzDecoder;
-use reqwest::{blocking, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -13,13 +11,13 @@ use std::{
     process::Command,
     str::FromStr,
 };
-use tar::Archive;
 
+mod registry;
 mod target;
 
+pub use registry::get_latest_lts;
 pub use target::{Target, Version};
 
-const BASE_URL: &'static str = "https://nodejs.org/dist/";
 const BIN_DIR: &'static str = "bin";
 const BIN_NODE: &'static str = "node";
 const BIN_NODEUP: &'static str = "nodeup";
@@ -30,70 +28,17 @@ const NODEUP_DIR: &'static str = ".nodeup";
 const SETTINGS_FILE: &'static str = "settings.toml";
 const UPDATED_SETTINGS_FILE_TEMP: &'static str = ".updated.settings.toml";
 
-// Full url example: https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz
-fn get_node_download_url(target: Target) -> String {
-    let full_url = format!("{}{}/{}.tar.gz", BASE_URL, target.version(), target);
-    full_url
+pub fn download_node(target: Target) -> Result<()> {
+    let nodeup_dir = get_nodeup_dir()?;
+    registry::download_node_to(target, &nodeup_dir)
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct AvailableVersion {
-    version: String,
-    lts: LTSVersion,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
-enum LTSVersion {
-    Yes(String),
-    No(bool),
-}
-
-pub fn get_latest_lts() -> Result<Version> {
-    let url = format!("{}index.json", BASE_URL);
-    let resp = blocking::get(&url)
-        .with_context(|| format!("Request to Node distribution registry: {}", url))?;
-    let all_versions: Vec<AvailableVersion> = serde_json::from_reader(resp)?;
-    let latest_lts = all_versions
-        .into_iter()
-        .filter_map(|v| match v.lts {
-            LTSVersion::Yes(_) => Some(
-                Version::parse(&v.version)
-                    .expect(&format!("Error parsing verson from node registry: {:?}", v)),
-            ),
-            _ => None,
-        })
-        .max()
-        .expect("Received no lts versions from the node distribution registry");
-
-    Ok(latest_lts)
-}
-
-fn get_nodeup_dir() -> Result<PathBuf> {
+pub fn get_nodeup_dir() -> Result<PathBuf> {
     let nodeup_dir = home_dir()
         .ok_or(anyhow!("Error getting home directory"))?
         .join(NODEUP_DIR);
 
     Ok(nodeup_dir)
-}
-
-pub fn download_node(target: Target) -> Result<()> {
-    let url = get_node_download_url(target);
-    let tar_gzip =
-        blocking::get(&url).with_context(|| format!("Failed to make request to {}", url))?;
-    match tar_gzip.status() {
-        StatusCode::OK => {
-            let node_dir = get_nodeup_dir()?.join(INSTALL_DIR);
-
-            let tar = GzDecoder::new(tar_gzip);
-            let mut arc = Archive::new(tar);
-            arc.unpack(node_dir)
-                .with_context(|| format!("Failed to unpack node into directory: {}", "."))?;
-            Ok(())
-        }
-        StatusCode::NOT_FOUND => Err(anyhow!("{} does not exist", target)),
-        code => Err(anyhow!("Unknown Error: {}", code)),
-    }
 }
 
 // TODO: check that the version is installed before removing
@@ -230,22 +175,4 @@ pub fn set_override(target: Target, dir: PathBuf) -> Result<()> {
         .context("Error writing updates to settings.toml")?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn create_node_url() {
-        let version = Version {
-            major: 12,
-            minor: 9,
-            patch: 1,
-        };
-
-        let actual = get_node_download_url(Target::from_version(version));
-        let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz";
-        assert_eq!(actual, expected);
-    }
 }

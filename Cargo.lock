@@ -606,10 +606,12 @@ dependencies = [
  "clap",
  "dirs",
  "flate2",
+ "log",
  "reqwest",
  "serde",
  "serde_json",
  "tar",
+ "tempfile",
  "toml",
 ]
 
