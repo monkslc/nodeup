@@ -1,10 +1,11 @@
 use anyhow::{anyhow, Context, Result};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt,
 };
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub struct Target {
     os: OperatingSystem,
     version: Version,
@@ -56,7 +57,7 @@ impl fmt::Display for Target {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum OperatingSystem {
     Darwin,
     Linux,
@@ -107,7 +108,7 @@ impl fmt::Display for OperatingSystem {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Version {
     pub major: usize,
     pub minor: usize,

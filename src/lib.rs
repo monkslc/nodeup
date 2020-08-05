@@ -5,12 +5,13 @@ use reqwest::{blocking, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    fs,
+    env, fs,
     fs::OpenOptions,
     io::Read,
     os::unix::{fs::symlink, process::CommandExt},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
+    str::FromStr,
 };
 use tar::Archive;
 
@@ -118,22 +119,10 @@ pub fn list_versions() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Config {
-    version_mappings: HashMap<String, String>,
-}
-
-impl From<ConfigDTO> for Config {
-    fn from(dto: ConfigDTO) -> Config {
-        Config {
-            version_mappings: dto.version_mappings.unwrap_or_else(HashMap::new),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct ConfigDTO {
-    version_mappings: Option<HashMap<String, String>>,
+    #[serde(default)]
+    version_mappings: HashMap<PathBuf, Target>,
 }
 
 fn get_config_file() -> Result<Config> {
@@ -150,7 +139,7 @@ fn get_config_file() -> Result<Config> {
     file.read_to_end(&mut content)
         .context("Error reading file")?;
 
-    let config: ConfigDTO =
+    let config: Config =
         toml::from_slice(&content[..]).context("Error deserializing config file")?;
 
     Ok(Config::from(config))
@@ -161,7 +150,7 @@ pub fn change_default_target(target: Target) -> Result<()> {
     let mut config = get_config_file()?;
     config
         .version_mappings
-        .insert(String::from("default"), target.to_string());
+        .insert(PathBuf::from_str("default").unwrap(), target);
 
     let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
@@ -180,7 +169,7 @@ pub fn change_default_target(target: Target) -> Result<()> {
 pub fn active_versions() -> Result<()> {
     let config = get_config_file()?;
     config.version_mappings.iter().for_each(|(dir, version)| {
-        println!("{} {}", dir, version);
+        println!("{:?} {}", dir, version);
     });
 
     Ok(())
@@ -204,28 +193,12 @@ pub fn link() -> Result<()> {
     Ok(())
 }
 
-pub fn execute_node<I: std::iter::Iterator<Item = String>>(args: I) -> Result<()> {
-    let config = get_config_file()?;
-    if let Some(version) = config.version_mappings.get("default") {
-        let bin_path = get_nodeup_dir()?
-            .join("node")
-            .join(version)
-            .join("bin")
-            .join("node");
-
-        Command::new(&bin_path).args(args).exec();
-        Err(anyhow!("Failed to execute bin at path: {:?}", bin_path))
-    } else {
-        Err(anyhow!("No default version found"))
-    }
-}
-
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> Result<()> {
     let config = get_config_file()?;
-    if let Some(version) = config.version_mappings.get("default") {
+    if let Some(target) = config.version_mappings.get(Path::new("default")) {
         let bin_path = get_nodeup_dir()?
             .join("node")
-            .join(version)
+            .join(target.to_string())
             .join("bin")
             .join(bin);
 
@@ -234,6 +207,29 @@ pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) ->
     } else {
         Err(anyhow!("No default version found"))
     }
+}
+
+pub fn override_cwd(target: Target) -> Result<()> {
+    let cwd = env::current_dir()?;
+    set_override(target, cwd)
+}
+
+pub fn set_override(target: Target, dir: PathBuf) -> Result<()> {
+    let mut config = get_config_file()?;
+    config.version_mappings.insert(dir, target);
+
+    let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
+
+    let updated_config_file = get_nodeup_dir()?.join(UPDATED_SETTINGS_FILE_TEMP);
+
+    fs::write(&updated_config_file, updated_contents)
+        .context("Error writing updated config file .updated.settings.toml")?;
+
+    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
+    fs::rename(&updated_config_file, config_file)
+        .context("Error writing updates to settings.toml")?;
+
+    Ok(())
 }
 
 #[cfg(test)]

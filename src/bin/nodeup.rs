@@ -37,6 +37,11 @@ fn nodeup_command() -> anyhow::Result<()> {
                 .arg(Arg::with_name("version").index(1).required(true)),
         )
         .subcommand(App::new("lts").about("print the latest long term support version of node"))
+        .subcommand(
+            App::new("override")
+                .about("override which node version gets used for the current directory and its descendents")
+                .arg(Arg::with_name("version").index(1).required(true)),
+        )
         .get_matches();
 
     match args.subcommand() {
@@ -77,6 +82,12 @@ fn nodeup_command() -> anyhow::Result<()> {
         ("lts", _) => {
             let version = nodeup::get_latest_lts()?;
             println!("{}", version)
+        }
+        ("override", args) => {
+            let version = args.unwrap().value_of("version").expect("Version required");
+            let version = nodeup::Version::parse(version)?;
+            let target = Target::from_version(version);
+            nodeup::override_cwd(target)?;
         }
         _ => todo!(),
     }
