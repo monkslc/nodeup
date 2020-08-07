@@ -1,56 +1,43 @@
 use anyhow::{anyhow, Context, Result};
-use dirs::home_dir;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     env, fs,
     fs::OpenOptions,
-    io::Read,
+    io::{ErrorKind, Read},
     os::unix::{fs::symlink, process::CommandExt},
     path::{Path, PathBuf},
     process::Command,
     str::FromStr,
 };
 
+pub mod nodeup_files;
 mod registry;
 mod target;
 
 pub use registry::get_latest_lts;
 pub use target::{Target, Version};
 
-const BIN_DIR: &'static str = "bin";
-const BIN_NODE: &'static str = "node";
-const BIN_NODEUP: &'static str = "nodeup";
-const BIN_NPM: &'static str = "npm";
-const BIN_NPX: &'static str = "npx";
-const INSTALL_DIR: &'static str = "node";
-const NODEUP_DIR: &'static str = ".nodeup";
-const SETTINGS_FILE: &'static str = "settings.toml";
+const NODE_EXECUTABLE: &'static str = "nodeup";
+const NPM_EXECUTABLE: &'static str = "npm";
+const NPX_EXECUTABLE: &'static str = "npx";
 const UPDATED_SETTINGS_FILE_TEMP: &'static str = ".updated.settings.toml";
 
 pub fn download_node(target: Target) -> Result<()> {
-    let nodeup_dir = get_nodeup_dir()?;
+    let nodeup_dir = nodeup_files::get()?;
     registry::download_node_to(target, &nodeup_dir)
-}
-
-pub fn get_nodeup_dir() -> Result<PathBuf> {
-    let nodeup_dir = home_dir()
-        .ok_or(anyhow!("Error getting home directory"))?
-        .join(NODEUP_DIR);
-
-    Ok(nodeup_dir)
 }
 
 // TODO: check that the version is installed before removing
 pub fn remove_node(target: Target) -> Result<()> {
-    let path = get_nodeup_dir()?.join(INSTALL_DIR).join(target.to_string());
+    let path = nodeup_files::target_path(&target)?;
     fs::remove_dir_all(path)
         .with_context(|| format!("Error removing {}. Maybe it wasn't installed?", target))?;
     Ok(())
 }
 
 pub fn list_versions() -> Result<()> {
-    let node_dir = get_nodeup_dir()?.join(INSTALL_DIR);
+    let node_dir = nodeup_files::download_dir()?;
     let entries =
         fs::read_dir(node_dir).context("Error reading entries in directory: ~/.nodeup/node")?;
     entries.for_each(|entry| {
@@ -71,14 +58,19 @@ struct Config {
 }
 
 fn get_config_file() -> Result<Config> {
-    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
+    let config_file = nodeup_files::config()?;
 
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
-        .open(config_file)
-        .context("Failed to open config file")?;
+        .open(&config_file)
+        .with_context(|| {
+            format!(
+                "Failed to open config file at path: {}",
+                &config_file.to_str().unwrap_or("unknown")
+            )
+        })?;
 
     let mut content = Vec::new();
     file.read_to_end(&mut content)
@@ -99,12 +91,12 @@ pub fn change_default_target(target: Target) -> Result<()> {
 
     let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
-    let updated_config_file = get_nodeup_dir()?.join(UPDATED_SETTINGS_FILE_TEMP);
+    let updated_config_file = nodeup_files::get()?.join(UPDATED_SETTINGS_FILE_TEMP);
 
     fs::write(&updated_config_file, updated_contents)
         .context("Error writing updated config file .updated.settings.toml")?;
 
-    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
+    let config_file = nodeup_files::config()?;
     fs::rename(&updated_config_file, config_file)
         .context("Error writing updates to settings.toml")?;
 
@@ -120,32 +112,50 @@ pub fn active_versions() -> Result<()> {
     Ok(())
 }
 
-pub fn link() -> Result<()> {
-    let bin_dir = get_nodeup_dir()?.join(BIN_DIR);
-    fs::create_dir_all(&bin_dir).context("Error creating bin dir")?;
+pub fn link_node_bins(links_path: &Path) -> Result<PathBuf> {
+    let nodeup_path = std::env::current_exe()?;
 
-    let nodeup_path = bin_dir.as_path().join(BIN_NODEUP);
+    let node_path = links_path.join(NODE_EXECUTABLE);
+    link_bin(&nodeup_path, &node_path)?;
 
-    let node_path = bin_dir.as_path().join(BIN_NODE);
-    symlink(&nodeup_path, node_path).context("Error symlinking node")?;
+    let npm_path = links_path.join(NPM_EXECUTABLE);
+    link_bin(&nodeup_path, &npm_path)?;
 
-    let npm_path = bin_dir.as_path().join(BIN_NPM);
-    symlink(&nodeup_path, npm_path).context("Error symlinking npm")?;
+    let npx_path = links_path.join(NPX_EXECUTABLE);
+    link_bin(&nodeup_path, &npx_path)?;
 
-    let npx_path = bin_dir.as_path().join(BIN_NPX);
-    symlink(&nodeup_path, npx_path).context("Error symlinking npx")?;
+    Ok(links_path.to_path_buf())
+}
 
-    Ok(())
+fn link_bin(actual: &Path, facade: &Path) -> Result<()> {
+    match symlink(actual, facade) {
+        Ok(_) => Ok(()),
+        Err(e) => match e.kind() {
+            ErrorKind::AlreadyExists => {
+                let metadata = std::fs::symlink_metadata(facade)?;
+                match metadata.file_type().is_symlink() {
+                    true => Ok(()),
+                    false => Err(anyhow!("It appears like something already exists at: {}. Try deleting and linking again.", facade.to_str().unwrap_or("[unknown]")))
+                }
+            }
+            ErrorKind::NotFound => {
+                let links_dir = facade.parent().ok_or(anyhow!(
+                    "Error creating the symlink dir at parent of: {}",
+                    facade.to_str().unwrap_or("[error]")
+                ))?;
+                fs::create_dir_all(links_dir)?;
+                symlink(actual, facade)?;
+                Ok(())
+            }
+            _ => Err(anyhow!("{}", e)),
+        },
+    }
 }
 
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> Result<()> {
     let config = get_config_file()?;
     if let Some(target) = config.version_mappings.get(Path::new("default")) {
-        let bin_path = get_nodeup_dir()?
-            .join("node")
-            .join(target.to_string())
-            .join("bin")
-            .join(bin);
+        let bin_path = nodeup_files::target_path(target)?.join("bin").join(bin);
 
         Command::new(&bin_path).args(args).exec();
         Err(anyhow!("Failed to execute bin at path: {:?}", bin_path))
@@ -165,14 +175,90 @@ pub fn set_override(target: Target, dir: PathBuf) -> Result<()> {
 
     let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
-    let updated_config_file = get_nodeup_dir()?.join(UPDATED_SETTINGS_FILE_TEMP);
+    let updated_config_file = nodeup_files::get()?.join(UPDATED_SETTINGS_FILE_TEMP);
 
     fs::write(&updated_config_file, updated_contents)
         .context("Error writing updated config file .updated.settings.toml")?;
 
-    let config_file = get_nodeup_dir()?.join(SETTINGS_FILE);
-    fs::rename(&updated_config_file, config_file)
-        .context("Error writing updates to settings.toml")?;
+    let config_file = nodeup_files::config()?;
+    fs::rename(&updated_config_file, &config_file).with_context(|| {
+        format!(
+            "Error writing updates to {}",
+            &config_file.to_str().unwrap_or("unknown")
+        )
+    })?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use tempfile::tempdir;
+
+    #[test]
+    fn linking() {
+        let fake_dir = tempdir().unwrap();
+        let linked_path = link_node_bins(fake_dir.path()).unwrap();
+        assert_eq!(linked_path, fake_dir.path());
+
+        let link_entries: Vec<_> = fs::read_dir(fake_dir.path())
+            .unwrap()
+            .map(|e| e.unwrap())
+            .collect();
+        assert_eq!(link_entries.len(), 3);
+
+        let are_links: Vec<bool> = link_entries
+            .iter()
+            .map(|e| e.metadata().unwrap().file_type().is_symlink())
+            .collect();
+        let expected = vec![true, true, true];
+        assert_eq!(are_links, expected);
+    }
+
+    #[test]
+    fn already_linked() {
+        let fake_dir = tempdir().unwrap();
+
+        let node_path = fake_dir.path().join(NODE_EXECUTABLE);
+        let nodeup_path = std::env::current_exe().unwrap();
+
+        symlink(&nodeup_path, node_path).unwrap();
+
+        let linked_path = link_node_bins(fake_dir.path()).unwrap();
+        assert_eq!(linked_path, fake_dir.path());
+    }
+
+    #[test]
+    fn node_already_installed() {
+        let fake_dir = tempdir().unwrap();
+        let already_installed_node = fake_dir.path().join(NODE_EXECUTABLE);
+        File::create(already_installed_node).unwrap();
+
+        let result = link_node_bins(fake_dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn link_nonexistent_dir() {
+        let fake_dir = tempdir().unwrap();
+        let nonexistent_dir = fake_dir.path().join("fake-dir");
+
+        let path = link_node_bins(&nonexistent_dir).unwrap();
+        assert_eq!(path, nonexistent_dir);
+
+        let link_entries: Vec<_> = fs::read_dir(nonexistent_dir)
+            .unwrap()
+            .map(|e| e.unwrap())
+            .collect();
+        assert_eq!(link_entries.len(), 3);
+
+        let are_links: Vec<bool> = link_entries
+            .iter()
+            .map(|e| e.metadata().unwrap().file_type().is_symlink())
+            .collect();
+        let expected = vec![true, true, true];
+        assert_eq!(are_links, expected);
+    }
 }

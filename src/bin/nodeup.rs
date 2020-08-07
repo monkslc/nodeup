@@ -68,8 +68,7 @@ fn nodeup_command() -> anyhow::Result<()> {
             nodeup::active_versions()?;
         }
         ("link", _) => {
-            nodeup::link()?;
-            println!("Add the following to your .bashrc:\nexport PATH=\"$HOME/.nodeup/bin/\":$PATH")
+            link_command()?;
         }
         ("remove", args) => {
             // safe to unwrap because version is required
@@ -100,4 +99,15 @@ fn node_command<I: std::iter::Iterator<Item = String>>(args: I) -> anyhow::Resul
 
 fn npm_command<I: std::iter::Iterator<Item = String>>(args: I) -> anyhow::Result<()> {
     nodeup::execute_bin("npm", args)
+}
+
+fn link_command() -> anyhow::Result<()> {
+    let links_path = nodeup::nodeup_files::links()?;
+    match nodeup::link_node_bins(&links_path) {
+        Ok(path) => {
+            println!("Symlinks crated for node, npm, and npx. Make sure {} is in your PATH environment variable.", path.to_str().unwrap_or("[not_found]"));
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }

@@ -93,6 +93,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Take a little too long to run
     fn download_node_to_temp_dir() {
         let temp_dir = tempdir().unwrap();
         let path = temp_dir.path();
