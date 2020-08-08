@@ -125,13 +125,9 @@ pub fn change_default_target(target: Target) -> Result<()> {
     Ok(())
 }
 
-pub fn active_versions() -> Result<()> {
+pub fn active_versions() -> Result<Vec<(PathBuf, Target)>> {
     let config = get_config_file()?;
-    config.version_mappings.iter().for_each(|(dir, version)| {
-        println!("{:?} {}", dir, version);
-    });
-
-    Ok(())
+    Ok(config.version_mappings.into_iter().collect())
 }
 
 pub fn link_node_bins(links_path: &Path) -> Result<PathBuf> {

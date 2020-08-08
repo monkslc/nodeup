@@ -65,7 +65,7 @@ fn nodeup_command() -> anyhow::Result<()> {
             nodeup::change_default_target(target)?;
         }
         ("active", _) => {
-            nodeup::active_versions()?;
+            print_active_versions()?;
         }
         ("link", _) => {
             link_command()?;
@@ -123,5 +123,15 @@ fn print_versions() -> anyhow::Result<()> {
     targets
         .iter()
         .for_each(|target| println!("{}", target.to_string()));
+    Ok(())
+}
+
+fn print_active_versions() -> anyhow::Result<()> {
+    nodeup::active_versions()?
+        .into_iter()
+        .for_each(|(dir, target)| {
+            println!("({}) {}", dir.display(), target);
+        });
+
     Ok(())
 }
