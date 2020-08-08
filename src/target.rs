@@ -97,9 +97,9 @@ impl Target {
         let (version_string, rest) = (&rest[..end_index], &rest[end_index..]);
         let version = Version::parse(version_string)?;
 
-        let (_, rest) = parse_dash(rest).map_err(|e| TargetError::Separator {
+        let (_, rest) = parse_dash(rest).map_err(|source| TargetError::Separator {
             after: "version",
-            source: e,
+            source,
         })?;
 
         let end_index = rest
@@ -160,13 +160,13 @@ impl Version {
             _ => content,
         };
 
-        let (major, rest) = parse_number(rest).map_err(|e| VersionError::Major { source: e })?;
-        let (_, rest) = parse_dot(rest).map_err(|e| VersionError::Minor { source: e })?;
+        let (major, rest) = parse_number(rest).map_err(|source| VersionError::Major { source })?;
+        let (_, rest) = parse_dot(rest).map_err(|source| VersionError::Minor { source })?;
 
-        let (minor, rest) = parse_number(rest).map_err(|e| VersionError::Minor { source: e })?;
-        let (_, rest) = parse_dot(rest).map_err(|e| VersionError::Patch { source: e })?;
+        let (minor, rest) = parse_number(rest).map_err(|source| VersionError::Minor { source })?;
+        let (_, rest) = parse_dot(rest).map_err(|source| VersionError::Patch { source })?;
 
-        let (patch, _) = parse_number(rest).map_err(|e| VersionError::Patch { source: e })?;
+        let (patch, _) = parse_number(rest).map_err(|source| VersionError::Patch { source })?;
 
         Ok(Version {
             major,
