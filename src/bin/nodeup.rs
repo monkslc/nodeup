@@ -114,7 +114,7 @@ fn link_command() -> anyhow::Result<()> {
 
 fn download_node_toolchain(target: Target) -> anyhow::Result<()> {
     let download_dir = local::download_dir()?;
-    registry::download_node_toolchain(&download_dir, target)
+    registry::download_node_toolchain(&download_dir, target).map_err(|e| e.into())
 }
 
 fn print_versions() -> anyhow::Result<()> {
