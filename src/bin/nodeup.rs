@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use std::env;
 
-use nodeup::{Target, Version};
+use nodeup::{local, registry, Target, Version};
 
 fn main() -> anyhow::Result<()> {
     let mut args = env::args();
@@ -51,7 +51,7 @@ fn nodeup_command() -> anyhow::Result<()> {
             let version = Version::parse(version)?;
             let target = Target::from_version(version);
             println!("Installing {}...", target);
-            nodeup::download_node(target)?;
+            download_node_toolchain(target)?;
         }
         ("list", _) => {
             nodeup::list_versions()?;
@@ -102,7 +102,7 @@ fn npm_command<I: std::iter::Iterator<Item = String>>(args: I) -> anyhow::Result
 }
 
 fn link_command() -> anyhow::Result<()> {
-    let links_path = nodeup::nodeup_files::links()?;
+    let links_path = local::links()?;
     match nodeup::link_node_bins(&links_path) {
         Ok(path) => {
             println!("Symlinks crated for node, npm, and npx. Make sure {} is in your PATH environment variable.", path.to_str().unwrap_or("[not_found]"));
@@ -110,4 +110,9 @@ fn link_command() -> anyhow::Result<()> {
         }
         Err(e) => Err(e),
     }
+}
+
+fn download_node_toolchain(target: Target) -> anyhow::Result<()> {
+    let download_dir = local::download_dir()?;
+    registry::download_node_toolchain(&download_dir, target)
 }

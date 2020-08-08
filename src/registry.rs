@@ -29,7 +29,7 @@ fn get_node_download_url(target: Target) -> String {
     full_url
 }
 
-pub fn download_node_to(target: Target, location: &Path) -> Result<()> {
+pub fn download_node_toolchain(location: &Path, target: Target) -> Result<()> {
     let url = get_node_download_url(target);
     debug!("Downloading node at url: {}", target);
 
@@ -107,7 +107,7 @@ mod tests {
             },
         );
 
-        download_node_to(target, path).unwrap();
+        download_node_toolchain(path, target).unwrap();
 
         let downloaded_path = path.join("node-v12.0.0-linux-x64");
         fs::read_dir(downloaded_path).unwrap();

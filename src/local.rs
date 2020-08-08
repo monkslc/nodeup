@@ -1,22 +1,18 @@
 use crate::target::Target;
-use anyhow::{anyhow, Result};
-use dirs;
-use std::{env, path::PathBuf};
+use anyhow::{anyhow, Context, Result};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+use tempfile::NamedTempFile;
+use uuid::Uuid;
 
 const CONFIG_FILE_NAME: &'static str = "settings.toml";
 const NODEUP: &'static str = "nodeup";
-const NODEUP_DIR: &'static str = ".nodeup";
+const TRANSITORY_UPDATE_FILE: &'static str = ".updated.settings.toml";
 
 const CONFIG_DIR_NOT_FOUND: &'static str = "Can't find an appropriate directory for config. Searched $NODEUP_CONFIG_DIR/settings.toml -> $XDG_CONFIG_HOME/nodeup/settings.toml -> $HOME/.config/nodeup/settings.toml";
 const DOWNLOAD_DIR_NOT_FOUND: &'static str = "Can't find an appropriate directory for node binaries. Searched $NODEUP_DOWNLOADS -> $XDG_DATA_HOME/nodeup -> $HOME/.local/share/nodeup";
-
-pub fn get() -> Result<PathBuf> {
-    let nodeup_dir = dirs::home_dir()
-        .ok_or(anyhow!("Error getting home directory"))?
-        .join(NODEUP_DIR);
-
-    Ok(nodeup_dir)
-}
 
 /*
  * Order of preference for download directory
@@ -45,16 +41,24 @@ pub fn target_path(target: &Target) -> Result<PathBuf> {
  * 2. $XDG_CONFIG_HOME/nodeup/settings.toml
  * 3. $HOME/.config/nodeup/settings.toml
  */
-pub fn config() -> Result<PathBuf> {
-    let nodeup_bin =
-        env::var_os("NODEUP_CONFIG").map(|dir| PathBuf::from(&dir).join(CONFIG_FILE_NAME));
-    if let Some(nodeup_bin) = nodeup_bin {
-        return Ok(nodeup_bin);
-    }
-
-    dirs::config_dir()
-        .map(|dir| dir.join(NODEUP).join(CONFIG_FILE_NAME))
+pub fn config_file() -> Result<PathBuf> {
+    env::var_os("NODEUP_CONFIG")
+        .map(|dir| PathBuf::from(dir).join(CONFIG_FILE_NAME))
+        .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP).join(CONFIG_FILE_NAME)))
         .ok_or(anyhow!(CONFIG_DIR_NOT_FOUND))
+}
+
+/*
+ * Transitory config file. Used for writing updates before overwriting the original file. The file
+ * will have a randomly generated file name
+ */
+pub fn transitory_config_file() -> Result<NamedTempFile> {
+    let transitory_file_name = Path::new(TRANSITORY_UPDATE_FILE).join(Uuid::new_v4().to_string());
+    let transitory_file_path = env::var_os("NODEUP_CONFIG")
+        .map(|dir| PathBuf::from(dir).join(&transitory_file_name))
+        .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP).join(&transitory_file_name)))
+        .ok_or(anyhow!(CONFIG_DIR_NOT_FOUND))?;
+    NamedTempFile::new_in(transitory_file_path).context("Error creating transitory file")
 }
 
 /*
@@ -99,18 +103,18 @@ mod tests {
     #[test]
     fn find_config_dir() {
         env::set_var("NODEUP_CONFIG", "/tmp/config");
-        let actual = config().unwrap();
+        let actual = config_file().unwrap();
         let expected = PathBuf::from("/tmp/config/settings.toml");
         env::remove_var("NODEUP_CONFIG");
         assert_eq!(actual, expected);
 
         env::set_var("XDG_CONFIG_HOME", "/tmp/xdg-config");
-        let actual = config().unwrap();
+        let actual = config_file().unwrap();
         let expected = PathBuf::from("/tmp/xdg-config/nodeup/settings.toml");
         env::remove_var("XDG_CONFIG_HOME");
         assert_eq!(actual, expected);
 
-        let actual = config().unwrap();
+        let actual = config_file().unwrap();
         let expected = dirs::home_dir()
             .map(|dir| dir.join(".config").join("nodeup").join("settings.toml"))
             .unwrap();

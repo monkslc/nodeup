@@ -11,8 +11,8 @@ use std::{
     str::FromStr,
 };
 
-pub mod nodeup_files;
-mod registry;
+pub mod local;
+pub mod registry;
 mod target;
 
 pub use registry::get_latest_lts;
@@ -21,23 +21,17 @@ pub use target::{Target, Version};
 const NODE_EXECUTABLE: &'static str = "nodeup";
 const NPM_EXECUTABLE: &'static str = "npm";
 const NPX_EXECUTABLE: &'static str = "npx";
-const UPDATED_SETTINGS_FILE_TEMP: &'static str = ".updated.settings.toml";
-
-pub fn download_node(target: Target) -> Result<()> {
-    let nodeup_dir = nodeup_files::get()?;
-    registry::download_node_to(target, &nodeup_dir)
-}
 
 // TODO: check that the version is installed before removing
 pub fn remove_node(target: Target) -> Result<()> {
-    let path = nodeup_files::target_path(&target)?;
+    let path = local::target_path(&target)?;
     fs::remove_dir_all(path)
         .with_context(|| format!("Error removing {}. Maybe it wasn't installed?", target))?;
     Ok(())
 }
 
 pub fn list_versions() -> Result<()> {
-    let node_dir = nodeup_files::download_dir()?;
+    let node_dir = local::download_dir()?;
     let entries =
         fs::read_dir(node_dir).context("Error reading entries in directory: ~/.nodeup/node")?;
     entries.for_each(|entry| {
@@ -58,7 +52,7 @@ struct Config {
 }
 
 fn get_config_file() -> Result<Config> {
-    let config_file = nodeup_files::config()?;
+    let config_file = local::config_file()?;
 
     let mut file = OpenOptions::new()
         .read(true)
@@ -91,12 +85,12 @@ pub fn change_default_target(target: Target) -> Result<()> {
 
     let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
-    let updated_config_file = nodeup_files::get()?.join(UPDATED_SETTINGS_FILE_TEMP);
+    let updated_config_file = local::transitory_config_file()?;
 
     fs::write(&updated_config_file, updated_contents)
         .context("Error writing updated config file .updated.settings.toml")?;
 
-    let config_file = nodeup_files::config()?;
+    let config_file = local::config_file()?;
     fs::rename(&updated_config_file, config_file)
         .context("Error writing updates to settings.toml")?;
 
@@ -155,7 +149,7 @@ fn link_bin(actual: &Path, facade: &Path) -> Result<()> {
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> Result<()> {
     let config = get_config_file()?;
     if let Some(target) = config.version_mappings.get(Path::new("default")) {
-        let bin_path = nodeup_files::target_path(target)?.join("bin").join(bin);
+        let bin_path = local::target_path(target)?.join("bin").join(bin);
 
         Command::new(&bin_path).args(args).exec();
         Err(anyhow!("Failed to execute bin at path: {:?}", bin_path))
@@ -175,12 +169,16 @@ pub fn set_override(target: Target, dir: PathBuf) -> Result<()> {
 
     let updated_contents = toml::to_vec(&config).context("Error deserializing settings.toml")?;
 
-    let updated_config_file = nodeup_files::get()?.join(UPDATED_SETTINGS_FILE_TEMP);
+    let updated_config_file = local::transitory_config_file()?;
 
-    fs::write(&updated_config_file, updated_contents)
-        .context("Error writing updated config file .updated.settings.toml")?;
+    fs::write(&updated_config_file, updated_contents).with_context(|| {
+        anyhow!(
+            "Error writing to transitory update file: {}",
+            updated_config_file.path().display(),
+        )
+    })?;
 
-    let config_file = nodeup_files::config()?;
+    let config_file = local::config_file()?;
     fs::rename(&updated_config_file, &config_file).with_context(|| {
         format!(
             "Error writing updates to {}",
