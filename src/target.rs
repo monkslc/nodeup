@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
@@ -18,19 +19,22 @@ impl Target {
 
     // content is expected to look like: node-v12.9.1-linux-x64
     pub fn parse(content: &str) -> Result<Self> {
+        debug!("Target parsing content: {}", content);
         // skip "node-"
-        let rest = &content[6..];
+        let rest = &content[5..];
 
         let end_index = rest
             .chars()
-            .position(|ch| ch != '-')
+            .position(|ch| ch == '-')
             .unwrap_or_else(|| rest.len());
         let (version_string, rest) = (&rest[..end_index], &rest[end_index..]);
         let version = Version::parse(version_string)?;
 
+        let (_, rest) = parse_dash(rest)?;
+
         let end_index = rest
             .chars()
-            .position(|ch| ch != '-')
+            .position(|ch| ch == '-')
             .unwrap_or_else(|| rest.len());
         let (os_string, _) = (&rest[..end_index], &rest[end_index..]);
         let os = OperatingSystem::parse(os_string)?;
@@ -77,7 +81,7 @@ impl OperatingSystem {
             "linux" => Ok(OperatingSystem::Linux),
             "win" => Ok(OperatingSystem::Windows),
             "darwin" => Ok(OperatingSystem::Darwin),
-            _ => Err(anyhow!("Uncrecognized operating system: {}", content)),
+            _ => Err(anyhow!("Unrecognized operating system: {}", content)),
         }
     }
 }
@@ -123,6 +127,7 @@ pub struct Version {
 
 impl Version {
     pub fn parse(content: &str) -> Result<Version> {
+        debug!("Parsing Version: {}", content);
         let rest = match content.chars().next() {
             Some('v') => &content[1..],
             _ => content,
@@ -190,6 +195,13 @@ pub fn parse_dot(content: &str) -> Result<((), &str)> {
     }
 }
 
+pub fn parse_dash(content: &str) -> Result<((), &str)> {
+    match content.chars().next() {
+        Some('-') => Ok(((), &content[1..])),
+        _ => Err(anyhow!("Error parsing the dot from content: {}", content)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,6 +220,23 @@ mod tests {
 
         let content = "v12.15.1";
         let actual = Version::parse(content).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn parse_target() {
+        let target_string = "node-v12.15.1-linux-x64";
+
+        let actual = Target::parse(target_string).unwrap();
+        let expected = Target::new(
+            OperatingSystem::Linux,
+            Version {
+                major: 12,
+                minor: 15,
+                patch: 1,
+            },
+        );
+
         assert_eq!(actual, expected);
     }
 }

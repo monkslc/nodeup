@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -30,19 +31,46 @@ pub fn remove_node(target: Target) -> Result<()> {
     Ok(())
 }
 
-pub fn list_versions() -> Result<()> {
-    let node_dir = local::download_dir()?;
-    let entries =
-        fs::read_dir(node_dir).context("Error reading entries in directory: ~/.nodeup/node")?;
-    entries.for_each(|entry| {
-        if let Ok(entry) = entry {
-            if let Some(installed_version) = entry.file_name().to_str() {
-                println!("{}", installed_version)
-            }
+pub fn installed_versions(path: &Path) -> Result<Vec<Target>> {
+    let entries = fs::read_dir(path)
+        .with_context(|| format!("Error reading entries in directory: {}", path.display()))?;
+
+    let target_paths = entries.filter_map(|dir| match dir {
+        Ok(dir) => Some(dir),
+        Err(e) => {
+            debug!(
+                "IO Error while trying to read targets in: {}\n{}",
+                path.display(),
+                e
+            );
+            None
         }
     });
 
-    Ok(())
+    let target_filenames = target_paths.map(|dir| dir.file_name());
+
+    let targets = target_filenames.filter_map(|dir| match dir.to_str() {
+        Some(target_name) => match Target::parse(target_name) {
+            Ok(target) => Some(target),
+            Err(e) => {
+                debug!(
+                    "Error parsing target: {}\n{}",
+                    dir.to_str().unwrap_or("[unknown]"),
+                    e
+                );
+                None
+            }
+        },
+        None => {
+            debug!(
+                "Error trying to convert: {} to a str",
+                dir.to_str().unwrap_or("[error]")
+            );
+            None
+        }
+    });
+
+    Ok(targets.collect())
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -195,6 +223,7 @@ pub fn set_override(target: Target, dir: PathBuf) -> Result<()> {
 mod tests {
     use super::*;
     use std::fs::File;
+    use target::OperatingSystem;
     use tempfile::tempdir;
 
     #[test]
@@ -260,5 +289,23 @@ mod tests {
             .collect();
         let expected = vec![true, true, true];
         assert_eq!(are_links, expected);
+    }
+
+    #[test]
+    fn get_installed_targets() {
+        let fake_dir = tempdir().unwrap();
+        let fake_target = Target::new(
+            OperatingSystem::Linux,
+            Version {
+                major: 10,
+                minor: 2,
+                patch: 3,
+            },
+        );
+        let fake_target_path = fake_dir.path().join(format!("{}", fake_target));
+        File::create(&fake_target_path).unwrap();
+
+        let targets = installed_versions(&fake_dir.path()).unwrap();
+        assert_eq!(targets, vec![fake_target]);
     }
 }

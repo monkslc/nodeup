@@ -54,7 +54,7 @@ fn nodeup_command() -> anyhow::Result<()> {
             download_node_toolchain(target)?;
         }
         ("list", _) => {
-            nodeup::list_versions()?;
+            print_versions()?;
         }
         ("default", args) => {
             // safe to unwrap because version is required
@@ -115,4 +115,13 @@ fn link_command() -> anyhow::Result<()> {
 fn download_node_toolchain(target: Target) -> anyhow::Result<()> {
     let download_dir = local::download_dir()?;
     registry::download_node_toolchain(&download_dir, target)
+}
+
+fn print_versions() -> anyhow::Result<()> {
+    let download_dir = local::download_dir()?;
+    let targets = nodeup::installed_versions(&download_dir)?;
+    targets
+        .iter()
+        .for_each(|target| println!("{}", target.to_string()));
+    Ok(())
 }
