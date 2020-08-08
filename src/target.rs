@@ -6,7 +6,7 @@ use std::{
 };
 use thiserror::Error;
 
-type ParseResult<T> = std::result::Result<T, ParseError>;
+type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
@@ -85,7 +85,7 @@ impl Target {
     }
 
     // content is expected to look like: node-v12.9.1-linux-x64
-    pub fn parse(content: &str) -> std::result::Result<Self, TargetError> {
+    pub fn parse(content: &str) -> Result<Self, TargetError> {
         debug!("Target parsing content: {}", content);
         // skip "node-"
         let rest = &content[5..];
@@ -153,7 +153,7 @@ impl fmt::Display for OperatingSystem {
 }
 
 impl Version {
-    pub fn parse(content: &str) -> std::result::Result<Version, VersionError> {
+    pub fn parse(content: &str) -> Result<Version, VersionError> {
         debug!("Parsing Version: {}", content);
         let rest = match content.chars().next() {
             Some('v') => &content[1..],
@@ -201,7 +201,7 @@ impl fmt::Display for Version {
 }
 
 impl OperatingSystem {
-    pub fn parse(content: &str) -> std::result::Result<Self, OperatingSystemError> {
+    pub fn parse(content: &str) -> Result<Self, OperatingSystemError> {
         match content {
             "linux" => Ok(OperatingSystem::Linux),
             "win" => Ok(OperatingSystem::Windows),
