@@ -18,9 +18,9 @@ mod target;
 pub use registry::get_latest_lts;
 pub use target::{Target, Version};
 
-const NODE_EXECUTABLE: &'static str = "nodeup";
-const NPM_EXECUTABLE: &'static str = "npm";
-const NPX_EXECUTABLE: &'static str = "npx";
+const NODE_EXECUTABLE: &str = "nodeup";
+const NPM_EXECUTABLE: &str = "npm";
+const NPX_EXECUTABLE: &str = "npx";
 
 // TODO: check that the version is installed before removing
 pub fn remove_node(target: Target) -> Result<()> {
@@ -73,7 +73,7 @@ fn get_config_file() -> Result<Config> {
     let config: Config =
         toml::from_slice(&content[..]).context("Error deserializing config file")?;
 
-    Ok(Config::from(config))
+    Ok(config)
 }
 
 // TODO: check that the version is installed
@@ -133,10 +133,12 @@ fn link_bin(actual: &Path, facade: &Path) -> Result<()> {
                 }
             }
             ErrorKind::NotFound => {
-                let links_dir = facade.parent().ok_or(anyhow!(
-                    "Error creating the symlink dir at parent of: {}",
-                    facade.to_str().unwrap_or("[error]")
-                ))?;
+                let links_dir = facade.parent().ok_or_else(|| {
+                    anyhow!(
+                        "Error creating the symlink dir at parent of: {}",
+                        facade.to_str().unwrap_or("[error]")
+                    )
+                })?;
                 fs::create_dir_all(links_dir)?;
                 symlink(actual, facade)?;
                 Ok(())

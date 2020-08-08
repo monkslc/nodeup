@@ -7,12 +7,12 @@ use std::{
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
-const CONFIG_FILE_NAME: &'static str = "settings.toml";
-const NODEUP: &'static str = "nodeup";
-const TRANSITORY_UPDATE_FILE: &'static str = ".updated.settings.toml";
+const CONFIG_FILE_NAME: &str = "settings.toml";
+const NODEUP: &str = "nodeup";
+const TRANSITORY_UPDATE_FILE: &str = ".updated.settings.toml";
 
-const CONFIG_DIR_NOT_FOUND: &'static str = "Can't find an appropriate directory for config. Searched $NODEUP_CONFIG_DIR/settings.toml -> $XDG_CONFIG_HOME/nodeup/settings.toml -> $HOME/.config/nodeup/settings.toml";
-const DOWNLOAD_DIR_NOT_FOUND: &'static str = "Can't find an appropriate directory for node binaries. Searched $NODEUP_DOWNLOADS -> $XDG_DATA_HOME/nodeup -> $HOME/.local/share/nodeup";
+const CONFIG_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for config. Searched $NODEUP_CONFIG_DIR/settings.toml -> $XDG_CONFIG_HOME/nodeup/settings.toml -> $HOME/.config/nodeup/settings.toml";
+const DOWNLOAD_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for node binaries. Searched $NODEUP_DOWNLOADS -> $XDG_DATA_HOME/nodeup -> $HOME/.local/share/nodeup";
 
 /*
  * Order of preference for download directory
@@ -69,10 +69,12 @@ pub fn transitory_config_file() -> Result<NamedTempFile> {
  */
 pub fn links() -> Result<PathBuf> {
     env::var_os("NODEUP_LINKS")
-        .map(|path| PathBuf::from(path))
-        .or(env::var_os("XDG_BIN_HOME").map(|dir| PathBuf::from(dir).join("nodeup").join("links")))
-        .or(dirs::home_dir().map(|dir| dir.join(".local").join("bin")))
-        .ok_or(anyhow!("Error getting executable dir"))
+        .map(PathBuf::from)
+        .or_else(|| {
+            env::var_os("XDG_BIN_HOME").map(|dir| PathBuf::from(dir).join("nodeup").join("links"))
+        })
+        .or_else(|| dirs::home_dir().map(|dir| dir.join(".local").join("bin")))
+        .ok_or_else(|| anyhow!("Error getting executable dir"))
 }
 
 #[cfg(test)]

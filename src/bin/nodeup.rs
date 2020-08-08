@@ -6,9 +6,9 @@ use nodeup::{local, registry, Target, Version};
 fn main() -> anyhow::Result<()> {
     let mut args = env::args();
     match args.next() {
-        Some(cmd) if cmd == String::from("nodeup") => nodeup_command(),
-        Some(cmd) if cmd == String::from("node") => node_command(args),
-        Some(cmd) if cmd == String::from("npm") => npm_command(args),
+        Some(cmd) if cmd == "nodeup" => nodeup_command(),
+        Some(cmd) if cmd == "node" => node_command(args),
+        Some(cmd) if cmd == "npm" => npm_command(args),
         _ => todo!(),
     }
 }

@@ -21,11 +21,17 @@ impl Target {
         // skip "node-"
         let rest = &content[6..];
 
-        let end_index = rest.chars().position(|ch| ch != '-').unwrap_or(rest.len());
+        let end_index = rest
+            .chars()
+            .position(|ch| ch != '-')
+            .unwrap_or_else(|| rest.len());
         let (version_string, rest) = (&rest[..end_index], &rest[end_index..]);
         let version = Version::parse(version_string)?;
 
-        let end_index = rest.chars().position(|ch| ch != '-').unwrap_or(rest.len());
+        let end_index = rest
+            .chars()
+            .position(|ch| ch != '-')
+            .unwrap_or_else(|| rest.len());
         let (os_string, _) = (&rest[..end_index], &rest[end_index..]);
         let os = OperatingSystem::parse(os_string)?;
 
@@ -166,7 +172,7 @@ pub fn parse_number(content: &str) -> Result<(usize, &str)> {
     let end_index = content
         .chars()
         .position(|ch| !ch.is_ascii_digit())
-        .unwrap_or(content.len());
+        .unwrap_or_else(|| content.len());
 
     let (major_string, rest) = (&content[..end_index], &content[end_index..]);
 

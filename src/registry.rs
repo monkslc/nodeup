@@ -8,7 +8,7 @@ use tar::Archive;
 
 use crate::target::{Target, Version};
 
-const BASE_URL: &'static str = "https://nodejs.org/dist/";
+const BASE_URL: &str = "https://nodejs.org/dist/";
 
 #[derive(Debug, Deserialize, Serialize)]
 struct AvailableVersion {
@@ -61,7 +61,7 @@ pub fn get_latest_lts() -> Result<Version> {
         .filter_map(|v| match v.lts {
             LTSVersion::Yes(_) => Some(
                 Version::parse(&v.version)
-                    .expect(&format!("Error parsing verson from node registry: {:?}", v)),
+                    .unwrap_or_else(|_| panic!("Error parsing verson from node registry: {:?}", v)),
             ),
             _ => None,
         })
