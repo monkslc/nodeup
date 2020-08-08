@@ -1,10 +1,10 @@
 use crate::target::Target;
-use anyhow::{anyhow, Context, Result};
 use std::{
     env,
     path::{Path, PathBuf},
 };
 use tempfile::NamedTempFile;
+use thiserror::Error;
 use uuid::Uuid;
 
 const CONFIG_FILE_NAME: &str = "settings.toml";
@@ -13,6 +13,21 @@ const TRANSITORY_UPDATE_FILE: &str = ".updated.settings.toml";
 
 const CONFIG_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for config. Searched $NODEUP_CONFIG_DIR/settings.toml -> $XDG_CONFIG_HOME/nodeup/settings.toml -> $HOME/.config/nodeup/settings.toml";
 const DOWNLOAD_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for node binaries. Searched $NODEUP_DOWNLOADS -> $XDG_DATA_HOME/nodeup -> $HOME/.local/share/nodeup";
+const LINKS_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for nodeup symlinks. Searched $NODEUP_LINKS -> $XDG_BIN_HOME/nodeup/links -> $HOME/.local/bin";
+
+type LocalResult<T> = Result<T, LocalError>;
+
+#[derive(Debug, Error)]
+pub enum LocalError {
+    #[error("{0}")]
+    NotFound(&'static str),
+
+    #[error("IO Error when trying to access: {path:?}: {source}")]
+    IO {
+        source: std::io::Error,
+        path: PathBuf,
+    },
+}
 
 /*
  * Order of preference for download directory
@@ -20,7 +35,7 @@ const DOWNLOAD_DIR_NOT_FOUND: &str = "Can't find an appropriate directory for no
  * 2. $XDG_DATA_HOME/nodeup
  * 3. $HOME/.local/share/nodeup
  */
-pub fn download_dir() -> Result<PathBuf> {
+pub fn download_dir() -> LocalResult<PathBuf> {
     let nodeup_bin = env::var_os("NODEUP_DOWNLOADS").map(|dir| PathBuf::from(&dir));
     if let Some(nodeup_bin) = nodeup_bin {
         return Ok(nodeup_bin);
@@ -28,10 +43,10 @@ pub fn download_dir() -> Result<PathBuf> {
 
     dirs::data_dir()
         .map(|dir| PathBuf::from(&dir).join(NODEUP))
-        .ok_or(anyhow!(DOWNLOAD_DIR_NOT_FOUND))
+        .ok_or(LocalError::NotFound(DOWNLOAD_DIR_NOT_FOUND))
 }
 
-pub fn target_path(target: &Target) -> Result<PathBuf> {
+pub fn target_path(target: &Target) -> LocalResult<PathBuf> {
     download_dir().map(|dir| dir.join(target.to_string()))
 }
 
@@ -41,24 +56,27 @@ pub fn target_path(target: &Target) -> Result<PathBuf> {
  * 2. $XDG_CONFIG_HOME/nodeup/settings.toml
  * 3. $HOME/.config/nodeup/settings.toml
  */
-pub fn config_file() -> Result<PathBuf> {
+pub fn config_file() -> LocalResult<PathBuf> {
     env::var_os("NODEUP_CONFIG")
         .map(|dir| PathBuf::from(dir).join(CONFIG_FILE_NAME))
         .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP).join(CONFIG_FILE_NAME)))
-        .ok_or(anyhow!(CONFIG_DIR_NOT_FOUND))
+        .ok_or(LocalError::NotFound(CONFIG_DIR_NOT_FOUND))
 }
 
 /*
  * Transitory config file. Used for writing updates before overwriting the original file. The file
  * will have a randomly generated file name
  */
-pub fn transitory_config_file() -> Result<NamedTempFile> {
+pub fn transitory_config_file() -> LocalResult<NamedTempFile> {
     let transitory_file_name = Path::new(TRANSITORY_UPDATE_FILE).join(Uuid::new_v4().to_string());
     let transitory_file_path = env::var_os("NODEUP_CONFIG")
         .map(|dir| PathBuf::from(dir).join(&transitory_file_name))
         .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP).join(&transitory_file_name)))
-        .ok_or(anyhow!(CONFIG_DIR_NOT_FOUND))?;
-    NamedTempFile::new_in(transitory_file_path).context("Error creating transitory file")
+        .ok_or(LocalError::NotFound(CONFIG_DIR_NOT_FOUND))?;
+    NamedTempFile::new_in(&transitory_file_path).map_err(|source| LocalError::IO {
+        source,
+        path: transitory_file_path,
+    })
 }
 
 /*
@@ -67,14 +85,14 @@ pub fn transitory_config_file() -> Result<NamedTempFile> {
  * 2. $XDG_BIN_HOME/nodeup/links
  * 3. $HOME/.local/bin
  */
-pub fn links() -> Result<PathBuf> {
+pub fn links() -> LocalResult<PathBuf> {
     env::var_os("NODEUP_LINKS")
         .map(PathBuf::from)
         .or_else(|| {
             env::var_os("XDG_BIN_HOME").map(|dir| PathBuf::from(dir).join("nodeup").join("links"))
         })
         .or_else(|| dirs::home_dir().map(|dir| dir.join(".local").join("bin")))
-        .ok_or_else(|| anyhow!("Error getting executable dir"))
+        .ok_or(LocalError::NotFound(LINKS_DIR_NOT_FOUND))
 }
 
 #[cfg(test)]
