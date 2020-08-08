@@ -23,6 +23,12 @@ const NODE_EXECUTABLE: &str = "nodeup";
 const NPM_EXECUTABLE: &str = "npm";
 const NPX_EXECUTABLE: &str = "npx";
 
+#[derive(Debug, Deserialize, Serialize)]
+struct Config {
+    #[serde(default)]
+    version_mappings: HashMap<PathBuf, Target>,
+}
+
 // TODO: check that the version is installed before removing
 pub fn remove_node(target: Target) -> Result<()> {
     let path = local::target_path(&target)?;
@@ -35,8 +41,8 @@ pub fn installed_versions(path: &Path) -> Result<Vec<Target>> {
     let entries = fs::read_dir(path)
         .with_context(|| format!("Error reading entries in directory: {}", path.display()))?;
 
-    let target_paths = entries.filter_map(|dir| match dir {
-        Ok(dir) => Some(dir),
+    let target_paths = entries.filter_map(|entry| match entry {
+        Ok(entry) => Some(entry),
         Err(e) => {
             debug!(
                 "IO Error while trying to read targets in: {}\n{}",
@@ -47,15 +53,15 @@ pub fn installed_versions(path: &Path) -> Result<Vec<Target>> {
         }
     });
 
-    let target_filenames = target_paths.map(|dir| dir.file_name());
+    let target_names = target_paths.map(|target_path| target_path.file_name());
 
-    let targets = target_filenames.filter_map(|dir| match dir.to_str() {
+    let targets = target_names.filter_map(|target| match target.to_str() {
         Some(target_name) => match Target::parse(target_name) {
             Ok(target) => Some(target),
             Err(e) => {
                 debug!(
                     "Error parsing target: {}\n{}",
-                    dir.to_str().unwrap_or("[unknown]"),
+                    target.to_str().unwrap_or("[unknown]"),
                     e
                 );
                 None
@@ -64,19 +70,13 @@ pub fn installed_versions(path: &Path) -> Result<Vec<Target>> {
         None => {
             debug!(
                 "Error trying to convert: {} to a str",
-                dir.to_str().unwrap_or("[error]")
+                target.to_str().unwrap_or("[error]")
             );
             None
         }
     });
 
     Ok(targets.collect())
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Config {
-    #[serde(default)]
-    version_mappings: HashMap<PathBuf, Target>,
 }
 
 fn get_config_file() -> Result<Config> {
