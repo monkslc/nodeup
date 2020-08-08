@@ -245,15 +245,15 @@ pub fn parse_number(content: &str) -> ParseResult<(usize, &str)> {
     Ok((major, rest))
 }
 
-pub fn parse_dot(content: &str) -> ParseResult<(char, &str)> {
+fn parse_dot(content: &str) -> ParseResult<(char, &str)> {
     take_char('.', content)
 }
 
-pub fn parse_dash(content: &str) -> ParseResult<(char, &str)> {
+fn parse_dash(content: &str) -> ParseResult<(char, &str)> {
     take_char('-', content)
 }
 
-pub fn take_char(expected: char, content: &str) -> ParseResult<(char, &str)> {
+fn take_char(expected: char, content: &str) -> ParseResult<(char, &str)> {
     match content.chars().next() {
         Some(ch) if ch == expected => Ok((ch, &content[1..])),
         Some(ch) => Err(ParseError::UnexpectedChar {
