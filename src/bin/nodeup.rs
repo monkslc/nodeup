@@ -3,7 +3,9 @@ use std::env;
 
 use nodeup::{local, registry, Target, Version};
 
-fn main() -> anyhow::Result<()> {
+type CLIResult = Result<(), Box<dyn std::error::Error>>;
+
+fn main() -> CLIResult {
     let mut args = env::args();
     match args.next() {
         Some(cmd) if cmd == "nodeup" => nodeup_command(),
@@ -13,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-fn nodeup_command() -> anyhow::Result<()> {
+fn nodeup_command() -> CLIResult {
     let args = App::new("Nodeup")
         .version("0.1")
         .author("Connor Monks")
@@ -93,31 +95,31 @@ fn nodeup_command() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn node_command<I: std::iter::Iterator<Item = String>>(args: I) -> anyhow::Result<()> {
-    nodeup::execute_bin("node", args)
+fn node_command<I: std::iter::Iterator<Item = String>>(args: I) -> CLIResult {
+    nodeup::execute_bin("node", args).map_err(|e| e.into())
 }
 
-fn npm_command<I: std::iter::Iterator<Item = String>>(args: I) -> anyhow::Result<()> {
-    nodeup::execute_bin("npm", args)
+fn npm_command<I: std::iter::Iterator<Item = String>>(args: I) -> CLIResult {
+    nodeup::execute_bin("npm", args).map_err(|e| e.into())
 }
 
-fn link_command() -> anyhow::Result<()> {
+fn link_command() -> CLIResult {
     let links_path = local::links()?;
     match nodeup::link_node_bins(&links_path) {
         Ok(path) => {
             println!("Symlinks crated for node, npm, and npx. Make sure {} is in your PATH environment variable.", path.to_str().unwrap_or("[not_found]"));
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e.into()),
     }
 }
 
-fn download_node_toolchain(target: Target) -> anyhow::Result<()> {
+fn download_node_toolchain(target: Target) -> CLIResult {
     let download_dir = local::download_dir()?;
     registry::download_node_toolchain(&download_dir, target).map_err(|e| e.into())
 }
 
-fn print_versions() -> anyhow::Result<()> {
+fn print_versions() -> CLIResult {
     let download_dir = local::download_dir()?;
     let targets = nodeup::installed_versions(&download_dir)?;
     targets
@@ -126,7 +128,7 @@ fn print_versions() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_active_versions() -> anyhow::Result<()> {
+fn print_active_versions() -> CLIResult {
     nodeup::active_versions()?
         .into_iter()
         .for_each(|(dir, target)| {

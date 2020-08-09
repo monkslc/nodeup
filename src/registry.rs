@@ -2,7 +2,10 @@ use flate2::read::GzDecoder;
 use log::debug;
 use reqwest::{blocking, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
 use thiserror::Error;
 
@@ -22,10 +25,7 @@ pub enum RegistryError {
     },
 
     #[error("Error writing the download out to disk at location: {path:?}: {source}")]
-    IO {
-        source: std::io::Error,
-        path: PathBuf,
-    },
+    IO { source: io::Error, path: PathBuf },
 
     #[error("Target {target} does not exist")]
     InvalidTarget { target: Target },

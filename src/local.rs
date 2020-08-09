@@ -1,6 +1,6 @@
 use crate::target::Target;
 use std::{
-    env,
+    env, io,
     path::{Path, PathBuf},
 };
 use tempfile::NamedTempFile;
@@ -23,10 +23,7 @@ pub enum LocalError {
     NotFound(&'static str),
 
     #[error("IO Error when trying to access: {path:?}: {source}")]
-    IO {
-        source: std::io::Error,
-        path: PathBuf,
-    },
+    IO { source: io::Error, path: PathBuf },
 }
 
 /*
