@@ -21,7 +21,7 @@ use local::LocalError;
 pub use registry::get_latest_lts;
 pub use target::{Target, Version};
 
-const NODE_EXECUTABLE: &str = "nodeup";
+const NODE_EXECUTABLE: &str = "node";
 const NPM_EXECUTABLE: &str = "npm";
 const NPX_EXECUTABLE: &str = "npx";
 
@@ -62,7 +62,7 @@ pub enum ConfigFileError {
     #[error(transparent)]
     Local(#[from] LocalError),
 
-    #[error("An IO error occurect while trying to access {path:?}: {source}")]
+    #[error("An IO error occured while trying to access {path:?}: {source}")]
     IO { source: io::Error, path: PathBuf },
 
     #[error("An error occured trying to deserialize the config file. This may be indicative of a malformatted file. Check the file at path: {path:?}: {source}")]
@@ -289,6 +289,12 @@ pub fn set_override(target: Target, dir: PathBuf) -> NodeupResult<()> {
 fn open_config_file() -> Result<Config, ConfigFileError> {
     let config_file = local::config_file()?;
 
+    if let Some(config_dir) = config_file.parent() {
+        fs::create_dir_all(config_dir).map_err(|source| ConfigFileError::IO {
+            source,
+            path: config_dir.to_path_buf(),
+        })?;
+    }
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)

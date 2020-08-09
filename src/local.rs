@@ -1,6 +1,6 @@
 use crate::target::Target;
 use std::{
-    env, io,
+    env, fs, io,
     path::{Path, PathBuf},
 };
 use tempfile::NamedTempFile;
@@ -70,6 +70,13 @@ pub fn transitory_config_file() -> LocalResult<NamedTempFile> {
         .map(|dir| PathBuf::from(dir).join(&transitory_file_name))
         .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP).join(&transitory_file_name)))
         .ok_or(LocalError::NotFound(CONFIG_DIR_NOT_FOUND))?;
+
+    // Create config dir in case it doesn't already exist
+    fs::create_dir_all(&transitory_file_path).map_err(|source| LocalError::IO {
+        source,
+        path: transitory_file_path.to_path_buf(),
+    })?;
+
     NamedTempFile::new_in(&transitory_file_path).map_err(|source| LocalError::IO {
         source,
         path: transitory_file_path,
