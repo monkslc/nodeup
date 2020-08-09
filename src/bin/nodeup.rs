@@ -5,13 +5,25 @@ use nodeup::{local, registry, Target, Version};
 
 type CLIResult = Result<(), Box<dyn std::error::Error>>;
 
-fn main() -> CLIResult {
+fn main() {
     let mut args = env::args();
     match args.next() {
-        Some(cmd) if cmd == "nodeup" => nodeup_command(),
-        Some(cmd) if cmd == "node" => node_command(args),
-        Some(cmd) if cmd == "npm" => npm_command(args),
-        _ => todo!(),
+        Some(cmd) if cmd == "nodeup" => {
+            if let Err(e) = nodeup_command() {
+                println!("{}", e);
+            }
+        }
+        Some(cmd) if cmd == "node" => {
+            if let Err(e) = node_command(args) {
+                println!("{}", e);
+            }
+        }
+        Some(cmd) if cmd == "npm" => {
+            if let Err(e) = npm_command(args) {
+                println!("{}", e);
+            }
+        }
+        _ => panic!("Unrecognized command"),
     }
 }
 
@@ -107,7 +119,7 @@ fn link_command() -> CLIResult {
     let links_path = local::links()?;
     match nodeup::link_node_bins(&links_path) {
         Ok(path) => {
-            println!("Symlinks crated for node, npm, and npx. Make sure {} is in your PATH environment variable.", path.to_str().unwrap_or("[not_found]"));
+            println!("Symlinks created for node, npm, and npx. Make sure {} is in your PATH environment variable.", path.to_str().unwrap_or("[not_found]"));
             Ok(())
         }
         Err(e) => Err(e.into()),
