@@ -5,7 +5,7 @@ authors = ["monkslc <monkslc@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-clap = "2.33.1"
+clap =  { version = "2.33.1", features = ["yaml"] }
 dirs = "3.0.1"
 flate2 = "1.0.16"
 log = "0.4.11"

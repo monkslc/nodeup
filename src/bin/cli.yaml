@@ -1,0 +1,52 @@
+name: nodeup
+version: "0.1.0"
+author: Connor Monks
+about: Easily install and switch between versions of nodejs
+subcommands:
+    - override:
+        about: control which version of node is run
+        subcommands:
+            - default:
+                about: change the default version of node used when no other override is specified
+                args:
+                    - version:
+                        index: 1
+                        required: true
+                        help: vesion of node. ex/ 12.18.3
+            - set:
+                about: change the version of node used for the current directory and its descendents
+                args:
+                    - version:
+                        index: 1
+                        required: true
+                        help: vesion of node. ex/ 12.18.3
+            - list:
+                about: list all overrides
+    - versions:
+        about: control which versions of node are installed
+        subcommands:
+            - install:
+                about: install a new version of node
+                args:
+                    - version:
+                        index: 1
+                        required: true
+                        help: version of node. ex/ 12.18.3
+            - remove:
+                about: remove an installed version of node
+                args:
+                    - version:
+                        index: 1
+                        required: true
+                        help: version of node. ex/ 12.18.3
+            - list:
+                about: list the installed versions of node
+
+            - lts:
+                about: list the latest long term support version of node
+
+    - control:
+        about: nodeup install and setup
+        subcommands:
+            - link:
+                about: create links for node, npm, and npx back to nodeup

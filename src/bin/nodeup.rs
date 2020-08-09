@@ -1,4 +1,5 @@
-use clap::{App, Arg};
+use clap::load_yaml;
+use clap::App;
 use std::env;
 
 use nodeup::{local, registry, Target, Version};
@@ -28,81 +29,59 @@ fn main() {
 }
 
 fn nodeup_command() -> CLIResult {
-    let args = App::new("Nodeup")
-        .version("0.1")
-        .author("Connor Monks")
-        .about("Easily install and switch between multiple node versions")
-        .subcommand(
-            App::new("install")
-                .about("install a new version of node")
-                .arg(Arg::with_name("version").index(1).required(true)),
-        )
-        .subcommand(App::new("list").about("list all of the installed node versions"))
-        .subcommand(
-            App::new("default")
-                .about("set the default node version")
-                .arg(Arg::with_name("version").index(1).required(true)),
-        )
-        .subcommand(App::new("active").about("show active node versions for each override"))
-        .subcommand(App::new("link").about("link node, npm and npx binaries"))
-        .subcommand(
-            App::new("remove")
-                .about("set the default node version")
-                .arg(Arg::with_name("version").index(1).required(true)),
-        )
-        .subcommand(App::new("lts").about("print the latest long term support version of node"))
-        .subcommand(
-            App::new("override")
-                .about("override which node version gets used for the current directory and its descendents")
-                .arg(Arg::with_name("version").index(1).required(true)),
-        )
-        .get_matches();
-
+    let yaml = load_yaml!("cli.yaml");
+    let args = App::from_yaml(yaml).get_matches();
     match args.subcommand() {
-        ("install", args) => {
-            // safe to unwrap because version is required
-            let version = args.unwrap().value_of("version").expect("Version required");
-            let version = Version::parse(version)?;
-            let target = Target::from_version(version);
-            println!("Installing {}...", target);
-            download_node_toolchain(target)?;
-        }
-        ("list", _) => {
-            print_versions()?;
-        }
-        ("default", args) => {
-            // safe to unwrap because version is required
-            let version = args.unwrap().value_of("version").expect("Version required");
-            let version = nodeup::Version::parse(version)?;
-            let target = Target::from_version(version);
-            println!("Changing the default node version to {}...", version);
-            nodeup::change_default_target(target)?;
-        }
-        ("active", _) => {
-            print_active_versions()?;
-        }
-        ("link", _) => {
-            link_command()?;
-        }
-        ("remove", args) => {
-            // safe to unwrap because version is required
-            let version = args.unwrap().value_of("version").expect("Version required");
-            let version = nodeup::Version::parse(version)?;
-            let target = Target::from_version(version);
-            nodeup::remove_node(target)?;
-            println!("{} successfully removed", version);
-        }
-        ("lts", _) => {
-            let version = nodeup::get_latest_lts()?;
-            println!("{}", version)
-        }
-        ("override", args) => {
-            let version = args.unwrap().value_of("version").expect("Version required");
-            let version = nodeup::Version::parse(version)?;
-            let target = Target::from_version(version);
-            nodeup::override_cwd(target)?;
-        }
-        _ => todo!(),
+        ("override", args) => match args.unwrap().subcommand() {
+            ("default", args) => {
+                let version = args.unwrap().value_of("version").expect("Version required");
+                let version = nodeup::Version::parse(version)?;
+                let target = Target::from_version(version);
+                println!("Changing the default node version to {}...", version);
+                nodeup::change_default_target(target)?;
+            }
+            ("set", args) => {
+                let version = args.unwrap().value_of("version").expect("Version required");
+                let version = nodeup::Version::parse(version)?;
+                let target = Target::from_version(version);
+                nodeup::override_cwd(target)?;
+            }
+            ("list", _) => {
+                print_active_versions()?;
+            }
+            _ => panic!("Subcommand not recognized"),
+        },
+        ("versions", args) => match args.unwrap().subcommand() {
+            ("install", args) => {
+                let version = args.unwrap().value_of("version").expect("Version required");
+                let version = Version::parse(version)?;
+                let target = Target::from_version(version);
+                println!("Installing {}...", target);
+                download_node_toolchain(target)?;
+            }
+            ("remove", args) => {
+                let version = args.unwrap().value_of("version").expect("Version required");
+                let version = nodeup::Version::parse(version)?;
+                let target = Target::from_version(version);
+                nodeup::remove_node(target)?;
+                println!("{} successfully removed", version);
+            }
+            ("list", _) => {
+                print_versions()?;
+            }
+            ("lts", _) => {
+                let version = nodeup::get_latest_lts()?;
+                println!("{}", version)
+            }
+            _ => panic!("Subcommand not recognized"),
+        },
+        ("control", args) => match args.unwrap().subcommand() {
+            ("link", _) => {
+                link_command()?;
+            }
+            _ => panic!("Subcommand not recognized"),
+        },
+        _ => panic!("Subcommand not recognized"),
     }
     Ok(())
 }
