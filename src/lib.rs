@@ -1,22 +1,19 @@
 use log::debug;
-use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
-    env, fmt, fs,
-    fs::OpenOptions,
-    io,
-    io::{ErrorKind, Read},
+    env, fmt, fs, io,
+    io::ErrorKind,
     os::unix::{fs::symlink, process::CommandExt},
     path::{Path, PathBuf},
     process::Command,
-    str::FromStr,
 };
 use thiserror::Error;
 
+pub mod config;
 pub mod local;
 pub mod registry;
 mod target;
 
+pub use config::{Config, ConfigError};
 use local::LocalError;
 pub use registry::get_latest_lts;
 pub use target::{Target, Version};
@@ -41,7 +38,7 @@ pub enum NodeupError {
 
     #[error("An error occured accessing the config while trying to {task}: {source}")]
     Config {
-        source: ConfigFileError,
+        source: ConfigError,
         task: ErrorTask,
     },
 
@@ -55,21 +52,6 @@ pub enum NodeupError {
         "Not sure which version to run. Try setting a default by running nodeup default x.x.x"
     )]
     NoVersionFound,
-}
-
-#[derive(Debug, Error)]
-pub enum ConfigFileError {
-    #[error(transparent)]
-    Local(#[from] LocalError),
-
-    #[error("An IO error occured while trying to access {path:?}: {source}")]
-    IO { source: io::Error, path: PathBuf },
-
-    #[error("An error occured trying to deserialize the config file. This may be indicative of a malformatted file. Check the file at path: {path:?}: {source}")]
-    Corruption {
-        source: toml::de::Error,
-        path: PathBuf,
-    },
 }
 
 #[derive(Debug, Error)]
@@ -106,12 +88,6 @@ impl fmt::Display for ErrorTask {
             ErrorTask::Removing => write!(f, "remove node"),
         }
     }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Config {
-    #[serde(default)]
-    version_mappings: HashMap<PathBuf, Target>,
 }
 
 // TODO: check that the version is installed before removing
@@ -170,46 +146,6 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
     Ok(targets.collect())
 }
 
-// TODO: check that the version is installed
-pub fn change_default_target(target: Target) -> NodeupResult<()> {
-    use ErrorTask::ChangingDefault as task;
-
-    let mut config = open_config_file().map_err(|source| NodeupError::Config { source, task })?;
-    config
-        .version_mappings
-        .insert(PathBuf::from_str("default").unwrap(), target);
-
-    let updated_contents = toml::to_vec(&config).expect(
-        "Error occured when trying to serialize and updated config file. This shouldn't happen",
-    );
-
-    let updated_config_file =
-        local::transitory_config_file().map_err(|source| NodeupError::Local { source, task })?;
-
-    fs::write(&updated_config_file, updated_contents).map_err(|source| NodeupError::IO {
-        source,
-        task,
-        path: updated_config_file.path().to_path_buf(),
-    })?;
-
-    let config_file = local::config_file().map_err(|source| NodeupError::Local { source, task })?;
-
-    fs::rename(&updated_config_file, config_file).map_err(|source| NodeupError::IO {
-        source,
-        task,
-        path: updated_config_file.path().to_path_buf(),
-    })?;
-
-    Ok(())
-}
-
-pub fn active_versions() -> NodeupResult<Vec<(PathBuf, Target)>> {
-    use ErrorTask::ActiveVersions as task;
-
-    let config = open_config_file().map_err(|source| NodeupError::Config { source, task })?;
-    Ok(config.version_mappings.into_iter().collect())
-}
-
 pub fn link_node_bins(links_path: &Path) -> NodeupResult<PathBuf> {
     use ErrorTask::Linking as task;
 
@@ -234,8 +170,8 @@ pub fn link_node_bins(links_path: &Path) -> NodeupResult<PathBuf> {
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> NodeupResult<()> {
     use ErrorTask::Executing as task;
 
-    let config = open_config_file().map_err(|source| NodeupError::Config { source, task })?;
-    if let Some(target) = config.version_mappings.get(Path::new("default")) {
+    let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    if let Some(target) = config.get_active_target(Path::new("throw-away-implement-later")) {
         let target_path =
             local::target_path(target).map_err(|source| NodeupError::Local { source, task })?;
         let bin_path = target_path.join("bin").join(bin);
@@ -247,6 +183,22 @@ pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) ->
     }
 }
 
+pub fn get_active_targets() -> NodeupResult<config::VersionIterator> {
+    use ErrorTask::ActiveVersions as task;
+
+    let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    Ok(config.active_versions())
+}
+
+pub fn change_default_target(target: Target) -> NodeupResult<()> {
+    use ErrorTask::Override as task;
+
+    let mut config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    config
+        .set_override(target, PathBuf::from("default"))
+        .map_err(|source| NodeupError::Config { source, task })
+}
+
 pub fn override_cwd(target: Target) -> NodeupResult<()> {
     use ErrorTask::Override as task;
 
@@ -255,70 +207,10 @@ pub fn override_cwd(target: Target) -> NodeupResult<()> {
         task,
         path: PathBuf::from("cwd"),
     })?;
-    set_override(target, cwd)
-}
-
-pub fn set_override(target: Target, dir: PathBuf) -> NodeupResult<()> {
-    use ErrorTask::Override as task;
-
-    let mut config = open_config_file().map_err(|source| NodeupError::Config { source, task })?;
-    config.version_mappings.insert(dir, target);
-
-    let updated_contents = toml::to_vec(&config)
-        .expect("Failed to serialize updated config file. This shouldn't fail");
-
-    let updated_config_file =
-        local::transitory_config_file().map_err(|source| NodeupError::Local { source, task })?;
-
-    fs::write(&updated_config_file, updated_contents).map_err(|source| NodeupError::IO {
-        source,
-        path: updated_config_file.path().to_path_buf(),
-        task,
-    })?;
-
-    let config_file = local::config_file().map_err(|source| NodeupError::Local { source, task })?;
-    fs::rename(&updated_config_file, &config_file).map_err(|source| NodeupError::IO {
-        source,
-        task,
-        path: updated_config_file.path().to_path_buf(),
-    })?;
-
-    Ok(())
-}
-
-fn open_config_file() -> Result<Config, ConfigFileError> {
-    let config_file = local::config_file()?;
-
-    if let Some(config_dir) = config_file.parent() {
-        fs::create_dir_all(config_dir).map_err(|source| ConfigFileError::IO {
-            source,
-            path: config_dir.to_path_buf(),
-        })?;
-    }
-    let mut file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&config_file)
-        .map_err(|source| ConfigFileError::IO {
-            source,
-            path: config_file.clone(),
-        })?;
-
-    let mut content = Vec::new();
-    file.read_to_end(&mut content)
-        .map_err(|source| ConfigFileError::IO {
-            source,
-            path: config_file.clone(),
-        })?;
-
-    let config: Config =
-        toml::from_slice(&content[..]).map_err(|source| ConfigFileError::Corruption {
-            source,
-            path: config_file,
-        })?;
-
-    Ok(config)
+    let mut config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    config
+        .set_override(target, cwd)
+        .map_err(|source| NodeupError::Config { source, task })
 }
 
 fn link_bin(actual: &Path, link_dir: &Path, link_name: &Path) -> Result<(), LinkingError> {
