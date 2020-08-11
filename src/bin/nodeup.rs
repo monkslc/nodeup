@@ -120,11 +120,9 @@ fn print_versions() -> CLIResult {
 }
 
 fn print_active_versions() -> CLIResult {
-    nodeup::get_active_targets()?
-        .into_iter()
-        .for_each(|(dir, target)| {
-            println!("({}) {}", dir.display(), target);
-        });
+    nodeup::get_active_targets()?.for_each(|(dir, target)| {
+        println!("({}) {}", dir.display(), target);
+    });
 
     Ok(())
 }

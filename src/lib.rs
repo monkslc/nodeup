@@ -146,27 +146,6 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
     Ok(targets.collect())
 }
 
-pub fn link_node_bins(links_path: &Path) -> NodeupResult<PathBuf> {
-    use ErrorTask::Linking as task;
-
-    let nodeup_path = std::env::current_exe().map_err(|source| NodeupError::IO {
-        source,
-        task,
-        path: PathBuf::from("Looking for current executable"),
-    })?;
-
-    link_bin(&nodeup_path, links_path, Path::new(NODE_EXECUTABLE))
-        .map_err(|source| NodeupError::Linking { source, task })?;
-
-    link_bin(&nodeup_path, links_path, Path::new(NPM_EXECUTABLE))
-        .map_err(|source| NodeupError::Linking { source, task })?;
-
-    link_bin(&nodeup_path, links_path, Path::new(NPX_EXECUTABLE))
-        .map_err(|source| NodeupError::Linking { source, task })?;
-
-    Ok(links_path.to_path_buf())
-}
-
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> NodeupResult<()> {
     use ErrorTask::Executing as task;
 
@@ -211,6 +190,27 @@ pub fn override_cwd(target: Target) -> NodeupResult<()> {
     config
         .set_override(target, cwd)
         .map_err(|source| NodeupError::Config { source, task })
+}
+
+pub fn link_node_bins(links_path: &Path) -> NodeupResult<PathBuf> {
+    use ErrorTask::Linking as task;
+
+    let nodeup_path = std::env::current_exe().map_err(|source| NodeupError::IO {
+        source,
+        task,
+        path: PathBuf::from("Looking for current executable"),
+    })?;
+
+    link_bin(&nodeup_path, links_path, Path::new(NODE_EXECUTABLE))
+        .map_err(|source| NodeupError::Linking { source, task })?;
+
+    link_bin(&nodeup_path, links_path, Path::new(NPM_EXECUTABLE))
+        .map_err(|source| NodeupError::Linking { source, task })?;
+
+    link_bin(&nodeup_path, links_path, Path::new(NPX_EXECUTABLE))
+        .map_err(|source| NodeupError::Linking { source, task })?;
+
+    Ok(links_path.to_path_buf())
 }
 
 fn link_bin(actual: &Path, link_dir: &Path, link_name: &Path) -> Result<(), LinkingError> {
