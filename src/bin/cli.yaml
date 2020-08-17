@@ -22,7 +22,14 @@ subcommands:
                         takes_value: false
 
             - remove:
-                about: remove the override set for the current working directory
+                about: remove an override that is currently set
+                args:
+                    - default:
+                        help: remove the default override instead of the current working directory
+                        short: d
+                        long: default
+                        required: false
+                        takes_value: false
             - list:
                 about: list all overrides
     - versions:

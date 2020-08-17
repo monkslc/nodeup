@@ -221,6 +221,15 @@ pub fn remove_override() -> NodeupResult<()> {
         .map_err(|source| NodeupError::Config { source, task })
 }
 
+pub fn remove_default_override() -> NodeupResult<()> {
+    use ErrorTask::RemovingOverride as task;
+
+    let mut config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    config
+        .remove_override(PathBuf::from("default"))
+        .map_err(|source| NodeupError::Config { source, task })
+}
+
 pub fn link_node_bins(links_path: &Path) -> NodeupResult<PathBuf> {
     use ErrorTask::Linking as task;
 

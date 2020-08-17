@@ -60,7 +60,14 @@ fn nodeup_command() -> CLIResult {
             ("list", _) => {
                 print_active_versions()?;
             }
-            ("remove", _) => remove()?,
+            ("remove", args) => {
+                let args = args.unwrap();
+                if args.is_present("default") {
+                    remove_default_override()?
+                } else {
+                    remove_override()?
+                }
+            }
             _ => println!("Run nodeup override --help to see available commands"),
         },
         ("versions", args) => match args.unwrap().subcommand() {
@@ -155,6 +162,10 @@ fn verify() -> CLIResult {
     }
 }
 
-fn remove() -> CLIResult {
+fn remove_override() -> CLIResult {
     nodeup::remove_override().map_err(|e| e.into())
+}
+
+fn remove_default_override() -> CLIResult {
+    nodeup::remove_default_override().map_err(|e| e.into())
 }
