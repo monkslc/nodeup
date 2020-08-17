@@ -13,7 +13,7 @@ subcommands:
                         index: 1
                         required: true
                         help: vesion of node. ex/ 12.18.3
-            - set:
+            - add:
                 about: change the version of node used for the current directory and its descendents
                 args:
                     - version:
@@ -27,7 +27,7 @@ subcommands:
     - versions:
         about: control which versions of node are installed
         subcommands:
-            - install:
+            - add:
                 about: install a new version of node
                 args:
                     - version:

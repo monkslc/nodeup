@@ -47,7 +47,7 @@ fn nodeup_command() -> CLIResult {
                 println!("Changing the default node version to {}...", version);
                 nodeup::change_default_target(target)?;
             }
-            ("set", args) => {
+            ("add", args) => {
                 let version = args.unwrap().value_of("version").expect("Version required");
                 let version = nodeup::Version::parse(version)?;
                 let target = Target::from_version(version);
@@ -60,7 +60,7 @@ fn nodeup_command() -> CLIResult {
             _ => panic!("Subcommand not recognized"),
         },
         ("versions", args) => match args.unwrap().subcommand() {
-            ("install", args) => {
+            ("add", args) => {
                 let version = args.unwrap().value_of("version").expect("Version required");
                 let version = Version::parse(version)?;
                 let target = Target::from_version(version);
