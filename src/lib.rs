@@ -163,8 +163,14 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
 pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) -> NodeupResult<()> {
     use ErrorTask::Executing as task;
 
+    let cwd = env::current_dir().map_err(|source| NodeupError::IO {
+        source,
+        task,
+        path: PathBuf::from("cwd"),
+    })?;
+
     let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
-    if let Some(target) = config.get_active_target(Path::new("throw-away-implement-later")) {
+    if let Some(target) = config.get_active_target(&cwd) {
         let target_path =
             local::target_path(target).map_err(|source| NodeupError::Local { source, task })?;
         let bin_path = target_path.join("bin").join(bin);

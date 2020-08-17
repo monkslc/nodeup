@@ -99,8 +99,25 @@ impl Config {
         self.version_mappings.into_iter()
     }
 
-    pub fn get_active_target(&self, _path: &Path) -> Option<&Target> {
-        self.version_mappings.get(&PathBuf::from("default"))
+    pub fn get_active_target(&self, from_dir: &Path) -> Option<&Target> {
+        let mut target_override: Option<(&Path, &Target)> = None;
+        for (path, target) in self.version_mappings.iter() {
+            if from_dir.starts_with(path) {
+                if let Some((current_override, _)) = target_override {
+                    // If the new path is more specific than the current override, use the new one
+                    if path.starts_with(current_override) {
+                        target_override = Some((path, target))
+                    }
+                } else {
+                    target_override = Some((path, target))
+                }
+            }
+        }
+
+        match target_override {
+            Some((_, target)) => Some(target),
+            None => self.version_mappings.get(&PathBuf::from("default")),
+        }
     }
 
     pub fn set_override(&mut self, target: Target, dir: PathBuf) -> ConfigResult<()> {
