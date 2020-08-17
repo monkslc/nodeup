@@ -11,6 +11,8 @@ use nodeup::{
 type CLIResult = Result<(), Box<dyn std::error::Error>>;
 
 fn main() {
+    env_logger::init();
+
     let mut args = env::args();
     let command = args.next().expect("Command name should have been there");
     let executable = Path::new(&command)

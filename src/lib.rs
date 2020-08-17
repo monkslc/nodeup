@@ -1,4 +1,4 @@
-use log::debug;
+use log::warn;
 use std::{
     env, fmt, fs, io,
     io::ErrorKind,
@@ -22,6 +22,15 @@ pub use target::{Target, Version};
 pub const NODE_EXECUTABLE: &str = "node";
 pub const NPM_EXECUTABLE: &str = "npm";
 pub const NPX_EXECUTABLE: &str = "npx";
+
+#[cfg(test)]
+#[ctor::ctor]
+fn init() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Debug)
+        .try_init();
+}
 
 pub type NodeupResult<T> = std::result::Result<T, NodeupError>;
 
@@ -116,7 +125,7 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
     let target_paths = entries.filter_map(|entry| match entry {
         Ok(entry) => Some(entry),
         Err(e) => {
-            debug!(
+            warn!(
                 "IO Error while trying to read targets in: {}\n{}",
                 path.display(),
                 e
@@ -131,7 +140,7 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
         Some(target_name) => match Target::parse(target_name) {
             Ok(target) => Some(target),
             Err(e) => {
-                debug!(
+                warn!(
                     "Error parsing target: {}\n{}",
                     target.to_str().unwrap_or("[unknown]"),
                     e
@@ -140,7 +149,7 @@ pub fn installed_versions(path: &Path) -> NodeupResult<Vec<Target>> {
             }
         },
         None => {
-            debug!(
+            warn!(
                 "Error trying to convert: {} to a str",
                 target.to_str().unwrap_or("[error]")
             );
