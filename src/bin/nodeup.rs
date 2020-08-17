@@ -1,6 +1,6 @@
 use clap::load_yaml;
 use clap::App;
-use std::{env, process};
+use std::{env, path::Path, process};
 
 use nodeup::{
     local, registry,
@@ -12,26 +12,30 @@ type CLIResult = Result<(), Box<dyn std::error::Error>>;
 
 fn main() {
     let mut args = env::args();
-    match args.next() {
-        Some(cmd) if cmd == "nodeup" => {
+    let command = args.next().expect("Command name should have been there");
+    let executable = Path::new(&command)
+        .file_name()
+        .expect("Should've been able to find execuatable name");
+    match executable {
+        cmd if cmd == "nodeup" => {
             if let Err(e) = nodeup_command() {
                 println!("{}", e);
                 process::exit(1);
             }
         }
-        Some(cmd) if cmd == "node" => {
+        cmd if cmd == "node" => {
             if let Err(e) = node_command(args) {
                 println!("{}", e);
                 process::exit(1);
             }
         }
-        Some(cmd) if cmd == "npm" => {
+        cmd if cmd == "npm" => {
             if let Err(e) = npm_command(args) {
                 println!("{}", e);
                 process::exit(1);
             }
         }
-        _ => panic!("Unrecognized command"),
+        other => panic!("Unrecognized command: {:?}", other),
     }
 }
 
@@ -57,7 +61,7 @@ fn nodeup_command() -> CLIResult {
                 print_active_versions()?;
             }
             ("remove", _) => remove()?,
-            _ => panic!("Subcommand not recognized"),
+            _ => println!("Run nodeup override --help to see available commands"),
         },
         ("versions", args) => match args.unwrap().subcommand() {
             ("add", args) => {
@@ -81,16 +85,16 @@ fn nodeup_command() -> CLIResult {
                 let version = nodeup::get_latest_lts()?;
                 println!("{}", version)
             }
-            _ => panic!("Subcommand not recognized"),
+            _ => println!("Run nodeup versions --help to see available commands"),
         },
         ("control", args) => match args.unwrap().subcommand() {
             ("link", _) => {
                 link_command()?;
             }
             ("verify", _) => verify()?,
-            _ => panic!("Subcommand not recognized"),
+            _ => println!("Run nodeup control --help to see available commands"),
         },
-        _ => panic!("Subcommand not recognized"),
+        _ => println!("Run nodeup --help to see available commands"),
     }
     Ok(())
 }
