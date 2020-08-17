@@ -46,18 +46,16 @@ fn nodeup_command() -> CLIResult {
     let args = App::from_yaml(yaml).get_matches();
     match args.subcommand() {
         ("override", args) => match args.unwrap().subcommand() {
-            ("default", args) => {
-                let version = args.unwrap().value_of("version").expect("Version required");
-                let version = nodeup::Version::parse(version)?;
-                let target = Target::from_version(version);
-                println!("Changing the default node version to {}...", version);
-                nodeup::change_default_target(target)?;
-            }
             ("add", args) => {
-                let version = args.unwrap().value_of("version").expect("Version required");
+                let args = args.unwrap();
+                let version = args.value_of("version").expect("Version required");
                 let version = nodeup::Version::parse(version)?;
                 let target = Target::from_version(version);
-                nodeup::override_cwd(target)?;
+                if args.is_present("default") {
+                    nodeup::change_default_target(target)?;
+                } else {
+                    nodeup::override_cwd(target)?;
+                }
             }
             ("list", _) => {
                 print_active_versions()?;

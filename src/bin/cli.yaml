@@ -6,20 +6,21 @@ subcommands:
     - override:
         about: control which version of node is run
         subcommands:
-            - default:
-                about: change the default version of node used when no other override is specified
-                args:
-                    - version:
-                        index: 1
-                        required: true
-                        help: vesion of node. ex/ 12.18.3
             - add:
                 about: change the version of node used for the current directory and its descendents
                 args:
                     - version:
+                        help: version of node. ex/ 12.18.3
                         index: 1
                         required: true
-                        help: vesion of node. ex/ 12.18.3
+
+                    - default:
+                        help: set as the default version of node on the system
+                        short: d
+                        long: default
+                        required: false
+                        takes_value: false
+
             - remove:
                 about: remove the override set for the current working directory
             - list:
