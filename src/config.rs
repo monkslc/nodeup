@@ -75,17 +75,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn active_versions(self) -> VersionIterator {
-        self.version_mappings.into_iter()
-    }
-
-    pub fn get_active_target(&self, _path: &Path) -> Option<&Target> {
-        self.version_mappings.get(&PathBuf::from("default"))
-    }
-
-    pub fn set_override(&mut self, target: Target, dir: PathBuf) -> ConfigResult<()> {
-        self.version_mappings.insert(dir, target);
-
+    pub fn update(&self) -> ConfigResult<()> {
         let updated_contents = toml::to_vec(&self)
             .expect("Failed to serialize updated config file. This shouldn't fail");
 
@@ -103,5 +93,23 @@ impl Config {
         })?;
 
         Ok(())
+    }
+
+    pub fn active_versions(self) -> VersionIterator {
+        self.version_mappings.into_iter()
+    }
+
+    pub fn get_active_target(&self, _path: &Path) -> Option<&Target> {
+        self.version_mappings.get(&PathBuf::from("default"))
+    }
+
+    pub fn set_override(&mut self, target: Target, dir: PathBuf) -> ConfigResult<()> {
+        self.version_mappings.insert(dir, target);
+        self.update()
+    }
+
+    pub fn remove_override(&mut self, dir: PathBuf) -> ConfigResult<()> {
+        self.version_mappings.remove(&dir);
+        self.update()
     }
 }

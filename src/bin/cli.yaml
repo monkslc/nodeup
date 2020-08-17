@@ -20,6 +20,8 @@ subcommands:
                         index: 1
                         required: true
                         help: vesion of node. ex/ 12.18.3
+            - remove:
+                about: remove the override set for the current working directory
             - list:
                 about: list all overrides
     - versions:

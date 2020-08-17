@@ -73,6 +73,7 @@ pub enum ErrorTask {
     Linking,
     Override,
     Removing,
+    RemovingOverride,
     Verify,
 }
 
@@ -88,6 +89,7 @@ impl fmt::Display for ErrorTask {
             ErrorTask::Linking => write!(f, "create sym links"),
             ErrorTask::Override => write!(f, "create override"),
             ErrorTask::Removing => write!(f, "remove node"),
+            ErrorTask::RemovingOverride => write!(f, "remove override"),
             ErrorTask::Verify => write!(f, "verify setup"),
         }
     }
@@ -192,6 +194,21 @@ pub fn override_cwd(target: Target) -> NodeupResult<()> {
     let mut config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
     config
         .set_override(target, cwd)
+        .map_err(|source| NodeupError::Config { source, task })
+}
+
+pub fn remove_override() -> NodeupResult<()> {
+    use ErrorTask::RemovingOverride as task;
+
+    let cwd = env::current_dir().map_err(|source| NodeupError::IO {
+        source,
+        task,
+        path: PathBuf::from("cwd"),
+    })?;
+
+    let mut config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    config
+        .remove_override(cwd)
         .map_err(|source| NodeupError::Config { source, task })
 }
 

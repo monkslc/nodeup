@@ -56,6 +56,7 @@ fn nodeup_command() -> CLIResult {
             ("list", _) => {
                 print_active_versions()?;
             }
+            ("remove", _) => remove()?,
             _ => panic!("Subcommand not recognized"),
         },
         ("versions", args) => match args.unwrap().subcommand() {
@@ -148,4 +149,8 @@ fn verify() -> CLIResult {
         }
         Err(e) => Err(e.into()),
     }
+}
+
+fn remove() -> CLIResult {
+    nodeup::remove_override().map_err(|e| e.into())
 }
