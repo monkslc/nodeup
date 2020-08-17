@@ -50,3 +50,5 @@ subcommands:
         subcommands:
             - link:
                 about: create links for node, npm, and npx back to nodeup
+            - verify:
+                about: check that everything is properly configured for nodeup

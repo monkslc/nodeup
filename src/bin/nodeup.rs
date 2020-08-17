@@ -1,8 +1,12 @@
 use clap::load_yaml;
 use clap::App;
-use std::env;
+use std::{env, process};
 
-use nodeup::{local, registry, Target, Version};
+use nodeup::{
+    local, registry,
+    verify::{self, ConfigurationCheck},
+    Target, Version,
+};
 
 type CLIResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -12,16 +16,19 @@ fn main() {
         Some(cmd) if cmd == "nodeup" => {
             if let Err(e) = nodeup_command() {
                 println!("{}", e);
+                process::exit(1);
             }
         }
         Some(cmd) if cmd == "node" => {
             if let Err(e) = node_command(args) {
                 println!("{}", e);
+                process::exit(1);
             }
         }
         Some(cmd) if cmd == "npm" => {
             if let Err(e) = npm_command(args) {
                 println!("{}", e);
+                process::exit(1);
             }
         }
         _ => panic!("Unrecognized command"),
@@ -79,6 +86,7 @@ fn nodeup_command() -> CLIResult {
             ("link", _) => {
                 link_command()?;
             }
+            ("verify", _) => verify()?,
             _ => panic!("Subcommand not recognized"),
         },
         _ => panic!("Subcommand not recognized"),
@@ -125,4 +133,19 @@ fn print_active_versions() -> CLIResult {
     });
 
     Ok(())
+}
+
+fn verify() -> CLIResult {
+    let path = local::links()?;
+    match verify::verify_links(&path) {
+        Ok(ConfigurationCheck::Correct) => {
+            println!("Everything looks properly configured!");
+            Ok(())
+        }
+        Ok(ConfigurationCheck::Incorrect(i)) => {
+            println!("{}", i);
+            process::exit(1);
+        }
+        Err(e) => Err(e.into()),
+    }
 }

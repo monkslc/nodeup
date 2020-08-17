@@ -12,15 +12,16 @@ pub mod config;
 pub mod local;
 pub mod registry;
 mod target;
+pub mod verify;
 
 pub use config::{Config, ConfigError};
 use local::LocalError;
 pub use registry::get_latest_lts;
 pub use target::{Target, Version};
 
-const NODE_EXECUTABLE: &str = "node";
-const NPM_EXECUTABLE: &str = "npm";
-const NPX_EXECUTABLE: &str = "npx";
+pub const NODE_EXECUTABLE: &str = "node";
+pub const NPM_EXECUTABLE: &str = "npm";
+pub const NPX_EXECUTABLE: &str = "npx";
 
 pub type NodeupResult<T> = std::result::Result<T, NodeupError>;
 
@@ -72,6 +73,7 @@ pub enum ErrorTask {
     Linking,
     Override,
     Removing,
+    Verify,
 }
 
 // Display should be implemented to fit into the NodeupError above
@@ -86,6 +88,7 @@ impl fmt::Display for ErrorTask {
             ErrorTask::Linking => write!(f, "create sym links"),
             ErrorTask::Override => write!(f, "create override"),
             ErrorTask::Removing => write!(f, "remove node"),
+            ErrorTask::Verify => write!(f, "verify setup"),
         }
     }
 }
