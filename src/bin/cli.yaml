@@ -32,6 +32,9 @@ subcommands:
                         takes_value: false
             - list:
                 about: list all overrides
+
+            - which:
+                about: show which version of node will get run for the current directory
     - versions:
         about: control which versions of node are installed
         subcommands:

@@ -84,6 +84,7 @@ pub enum ErrorTask {
     Removing,
     RemovingOverride,
     Verify,
+    Which,
 }
 
 // Display should be implemented to fit into the NodeupError above
@@ -100,6 +101,7 @@ impl fmt::Display for ErrorTask {
             ErrorTask::Removing => write!(f, "remove node"),
             ErrorTask::RemovingOverride => write!(f, "remove override"),
             ErrorTask::Verify => write!(f, "verify setup"),
+            ErrorTask::Which => write!(f, "find active node version"),
         }
     }
 }
@@ -292,6 +294,17 @@ fn link_bin(actual: &Path, link_dir: &Path, link_name: &Path) -> Result<(), Link
             }),
         },
     }
+}
+
+pub fn which(directory: &Path) -> NodeupResult<Target> {
+    use ErrorTask::Which as task;
+
+    let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
+    let active_target = config
+        .get_active_target(directory)
+        .ok_or(NodeupError::NoVersionFound)?;
+
+    Ok(*active_target)
 }
 
 #[cfg(test)]

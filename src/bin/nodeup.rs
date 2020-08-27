@@ -68,6 +68,9 @@ fn nodeup_command() -> CLIResult {
                     remove_override()?
                 }
             }
+            ("which", _) => {
+                which()?;
+            }
             _ => println!("Run nodeup override --help to see available commands"),
         },
         ("versions", args) => match args.unwrap().subcommand() {
@@ -168,4 +171,13 @@ fn remove_override() -> CLIResult {
 
 fn remove_default_override() -> CLIResult {
     nodeup::remove_default_override().map_err(|e| e.into())
+}
+
+fn which() -> CLIResult {
+    let cwd = env::current_dir()?;
+    let active_target = nodeup::which(&cwd)?;
+
+    println!("{}", active_target);
+
+    Ok(())
 }
