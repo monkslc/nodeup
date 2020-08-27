@@ -273,7 +273,7 @@ fn link_bin(actual: &Path, link_dir: &Path, link_name: &Path) -> Result<(), Link
                 match metadata.file_type().is_symlink() {
                     true => Ok(()),
                     false => Err(LinkingError::AlreadyExists {
-                        path: full_link_path.to_path_buf(),
+                        path: full_link_path,
                     }),
                 }
             }

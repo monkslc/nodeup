@@ -80,11 +80,7 @@ fn verify_link(path: PathBuf, executable: &'static str) -> Result<ConfigurationC
                 ErrorKind::NotFound => Ok(ConfigurationCheck::Incorrect(
                     IncorrectConfiguration::MissingSymLink(path),
                 )),
-                _ => Err(NodeupError::IO {
-                    task,
-                    source,
-                    path: path.clone(),
-                }),
+                _ => Err(NodeupError::IO { task, source, path }),
             }
         }
     };
