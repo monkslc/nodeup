@@ -172,15 +172,20 @@ pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) ->
     })?;
 
     let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
-    if let Some(target) = config.get_active_target(&cwd) {
-        let target_path =
-            local::target_path(target).map_err(|source| NodeupError::Local { source, task })?;
-        let bin_path = target_path.join("bin").join(bin);
+    let active_target = config
+        .get_active_target(&cwd)
+        .map_err(|source| NodeupError::Config { source, task })?;
 
-        Command::new(&bin_path).args(args).exec();
-        Ok(())
-    } else {
-        Err(NodeupError::NoVersionFound)
+    match active_target {
+        Some(target) => {
+            let target_path = local::target_path(&target)
+                .map_err(|source| NodeupError::Local { source, task })?;
+            let bin_path = target_path.join("bin").join(bin);
+
+            Command::new(&bin_path).args(args).exec();
+            Ok(())
+        }
+        None => Err(NodeupError::NoVersionFound),
     }
 }
 
@@ -302,9 +307,12 @@ pub fn which(directory: &Path) -> NodeupResult<Target> {
     let config = Config::fetch().map_err(|source| NodeupError::Config { source, task })?;
     let active_target = config
         .get_active_target(directory)
-        .ok_or(NodeupError::NoVersionFound)?;
+        .map_err(|source| NodeupError::Config { source, task })?;
 
-    Ok(*active_target)
+    match active_target {
+        Some(target) => Ok(target),
+        None => Err(NodeupError::NoVersionFound),
+    }
 }
 
 #[cfg(test)]

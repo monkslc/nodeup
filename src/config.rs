@@ -1,3 +1,4 @@
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -11,7 +12,7 @@ use thiserror::Error;
 
 use crate::{
     local::{self, LocalError},
-    target::Target,
+    target::{Target, Version, VersionError},
 };
 
 pub type ConfigResult<T> = Result<T, ConfigError>;
@@ -29,6 +30,9 @@ pub enum ConfigError {
         source: toml::de::Error,
         path: PathBuf,
     },
+
+    #[error("Error parsing the .nvmrc file at {path:?}\n{source}")]
+    ParseError { path: PathBuf, source: VersionError },
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -99,24 +103,22 @@ impl Config {
         self.version_mappings.into_iter()
     }
 
-    pub fn get_active_target(&self, from_dir: &Path) -> Option<&Target> {
-        let mut target_override: Option<(&Path, &Target)> = None;
-        for (path, target) in self.version_mappings.iter() {
-            if from_dir.starts_with(path) {
-                if let Some((current_override, _)) = target_override {
-                    // If the new path is more specific than the current override, use the new one
-                    if path.starts_with(current_override) {
-                        target_override = Some((path, target))
-                    }
-                } else {
-                    target_override = Some((path, target))
+    pub fn get_active_target(&self, from_dir: &Path) -> ConfigResult<Option<Target>> {
+        let mut current_dir = from_dir;
+        loop {
+            if let Some(target) = self.override_at_path(current_dir)? {
+                return Ok(Some(target));
+            };
+
+            match current_dir.parent() {
+                Some(next_dir) => current_dir = next_dir,
+                None => {
+                    return Ok(self
+                        .version_mappings
+                        .get(&PathBuf::from("default"))
+                        .copied())
                 }
             }
-        }
-
-        match target_override {
-            Some((_, target)) => Some(target),
-            None => self.version_mappings.get(&PathBuf::from("default")),
         }
     }
 
@@ -128,5 +130,52 @@ impl Config {
     pub fn remove_override(&mut self, dir: PathBuf) -> ConfigResult<()> {
         self.version_mappings.remove(&dir);
         self.update()
+    }
+
+    fn override_at_path(&self, path: &Path) -> ConfigResult<Option<Target>> {
+        if let Some(target) = self.version_mappings.get(path) {
+            return Ok(Some(*target));
+        };
+
+        let entry_iter = match std::fs::read_dir(path) {
+            Ok(iter) => iter,
+            Err(e) => {
+                error!("Error getting the iterator at path: {:?}.\n{}", path, e);
+                return Ok(None);
+            }
+        };
+
+        for entry in entry_iter {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    error!("Error reading entry in iterator {}", e);
+                    continue;
+                }
+            };
+
+            if entry.file_name() != ".nvmrc" {
+                continue;
+            };
+
+            let nvmrc_path = entry.path();
+            let version_string = match std::fs::read_to_string(&nvmrc_path) {
+                Ok(version_string) => version_string,
+                Err(e) => {
+                    error!("Error reading nvmrc file at: {:?}\n{}", nvmrc_path, e);
+                    continue;
+                }
+            };
+
+            let version =
+                Version::parse(&version_string).map_err(|source| ConfigError::ParseError {
+                    source,
+                    path: path.to_path_buf(),
+                })?;
+
+            return Ok(Some(Target::from_version(version)));
+        }
+
+        Ok(None)
     }
 }
