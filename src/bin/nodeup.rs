@@ -37,6 +37,12 @@ fn main() {
                 process::exit(1);
             }
         }
+        cmd if cmd == "npx" => {
+            if let Err(e) = npx_command(args) {
+                println!("{}", e);
+                process::exit(1);
+            }
+        }
         other => panic!("Unrecognized command: {:?}", other),
     }
 }
@@ -115,6 +121,10 @@ fn node_command<I: std::iter::Iterator<Item = String>>(args: I) -> CLIResult {
 
 fn npm_command<I: std::iter::Iterator<Item = String>>(args: I) -> CLIResult {
     nodeup::execute_bin("npm", args).map_err(|e| e.into())
+}
+
+fn npx_command<I: std::iter::Iterator<Item = String>>(args: I) -> CLIResult {
+    nodeup::execute_bin("npx", args).map_err(|e| e.into())
 }
 
 fn link_command() -> CLIResult {
