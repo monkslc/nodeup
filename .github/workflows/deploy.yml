@@ -1,0 +1,23 @@
+on: [push]
+
+name: Deploy
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: action-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cargo test
+        uses: action-rs/cargo@v1
+        with:
+          command: test
