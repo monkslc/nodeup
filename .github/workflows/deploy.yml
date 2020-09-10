@@ -1,13 +1,22 @@
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*'
 
 name: Deploy
 
 jobs:
   test:
-    name: Test
+    name: Publish Binaries
     runs-on: ${{ matrix.os }}
     strategy:
-        os: [ubuntu-latest, macos-latest]
+        matrix:
+          include:
+            - os: ubuntu-latest
+              asset_name: nodeup-linux
+
+            - os: macos-latest
+              asset_name: nodeup-macos
 
     steps:
       - name: Checkout
@@ -20,7 +29,21 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Cargo test
+      - name: Test
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build --release
+
+      - name: Publish
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/release/nodeup
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
+          body: "Testing github releases"
