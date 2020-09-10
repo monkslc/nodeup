@@ -37,7 +37,8 @@ jobs:
       - name: Build
         uses: actions-rs/cargo@v1
         with:
-          command: build --release
+          command: build
+          args: --release
 
       - name: Publish
         uses: svenstaro/upload-release-action@v2
