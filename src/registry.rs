@@ -120,7 +120,12 @@ mod tests {
         };
 
         let actual = get_node_download_url(Target::from_version(version));
+
+        #[cfg(target_os = "linux")]
         let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz";
+
+        #[cfg(target_os = "macos")]
+        let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-macos-x64.tar.gz";
         assert_eq!(actual, expected);
     }
 
