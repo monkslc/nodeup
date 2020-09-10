@@ -5,7 +5,10 @@ name: Deploy
 jobs:
   test:
     name: Test
-    runs-on: [ubuntu-latest, macos-latest]
+    runs-on:
+      - ubuntu-latest
+      - macos-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
