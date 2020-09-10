@@ -125,7 +125,7 @@ mod tests {
         let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-linux-x64.tar.gz";
 
         #[cfg(target_os = "macos")]
-        let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-macos-x64.tar.gz";
+        let expected = "https://nodejs.org/dist/v12.9.1/node-v12.9.1-darwin-x64.tar.gz";
         assert_eq!(actual, expected);
     }
 

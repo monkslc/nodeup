@@ -111,7 +111,7 @@ mod tests {
         env::remove_var("NODEUP_DOWNLOADS");
         assert_eq!(actual, expected);
 
-        #[cfg(target_os = "macos")]
+        #[cfg(target_os = "linux")]
         {
             env::set_var("XDG_DATA_HOME", "/tmp/other-nodeup");
             let actual = download_dir().unwrap();
@@ -168,6 +168,7 @@ mod tests {
             .map(|dir| {
                 dir.join("Library")
                     .join("Application Support")
+                    .join("nodeup")
                     .join("settings.toml")
             })
             .unwrap();

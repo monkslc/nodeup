@@ -128,12 +128,7 @@ impl Target {
  */
 impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "node-{}-{}-x64",
-            self.version(),
-            OperatingSystem::default()
-        )
+        write!(f, "node-{}-{}-x64", self.version(), self.os)
     }
 }
 
