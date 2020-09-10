@@ -82,7 +82,11 @@ fn nodeup_command() -> CLIResult {
         ("versions", args) => match args.unwrap().subcommand() {
             ("add", args) => {
                 let version = args.unwrap().value_of("version").expect("Version required");
-                let version = Version::parse(version)?;
+                let version = if version == "lts" {
+                    nodeup::get_latest_lts()?
+                } else {
+                    Version::parse(version)?
+                };
                 let target = Target::from_version(version);
                 println!("Installing {}...", target);
                 download_node_toolchain(target)?;
