@@ -5,10 +5,9 @@ name: Deploy
 jobs:
   test:
     name: Test
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ os }}
     strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+      os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Checkout
