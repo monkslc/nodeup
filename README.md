@@ -1,7 +1,8 @@
 # Installing
 **linux**
 ```
-sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.3/nodeup-linux && sudo chmod +x /usr/local/bin/nodeup
+sudo curl -Lo /usr/local/bin/nodeup-ll https://github.com/monkslc/nodeup/releases/download/v0.0.3/nodeup-linux \
+&& sudo chmod +x /usr/local/bin/nodeup-ll
 ```
 
 **mac**
@@ -82,8 +83,7 @@ Remove will remove an override for the current working directory only. It will n
 nodeup override list
 ```
 
-**Overriding the version with a file**
-
+**Overriding the version with a file**\
 Adding a `.nvmrc` file to a directory is the equivalent of setting an override for that directory. An example `.nvmrc` file would look like:
 ```
 12.18.3
