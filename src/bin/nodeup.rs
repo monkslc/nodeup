@@ -81,7 +81,8 @@ fn nodeup_command() -> CLIResult {
         },
         ("versions", args) => match args.unwrap().subcommand() {
             ("add", args) => {
-                let version = args.unwrap().value_of("version").expect("Version required");
+                let args = args.unwrap();
+                let version = args.value_of("version").expect("Version required");
                 let version = if version == "lts" {
                     nodeup::get_latest_lts()?
                 } else {
@@ -90,6 +91,10 @@ fn nodeup_command() -> CLIResult {
                 let target = Target::from_version(version);
                 println!("Installing {}...", target);
                 download_node_toolchain(target)?;
+
+                if args.is_present("default") {
+                    nodeup::change_default_target(target)?;
+                }
             }
             ("remove", args) => {
                 let version = args.unwrap().value_of("version").expect("Version required");

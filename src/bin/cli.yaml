@@ -15,7 +15,7 @@ subcommands:
                         required: true
 
                     - default:
-                        help: set as the default version of node on the system
+                        help: set as the default version of node for the current user
                         short: d
                         long: default
                         required: false
@@ -30,11 +30,13 @@ subcommands:
                         long: default
                         required: false
                         takes_value: false
+
             - list:
                 about: list all overrides
 
             - which:
                 about: show which version of node will get run for the current directory
+
     - versions:
         about: control which versions of node are installed
         subcommands:
@@ -45,6 +47,14 @@ subcommands:
                         index: 1
                         required: true
                         help: version of node. ex/ 12.18.3
+
+                    - default:
+                        help: set the newly installed version as the default for the current user
+                        short: d
+                        long: default
+                        required: false
+                        takes_value: false
+
             - remove:
                 about: remove an installed version of node
                 args:
@@ -52,6 +62,7 @@ subcommands:
                         index: 1
                         required: true
                         help: version of node. ex/ 12.18.3
+
             - list:
                 about: list the installed versions of node
 
