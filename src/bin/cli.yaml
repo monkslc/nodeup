@@ -62,6 +62,13 @@ subcommands:
                         required: false
                         takes_value: false
 
+                    - path:
+                        help: install node at the specified path
+                        short: p
+                        long: path
+                        required: false
+                        takes_value: true
+
             - remove:
                 about: remove an installed version of node
                 args:

@@ -90,7 +90,11 @@ fn nodeup_command() -> CLIResult {
                 };
                 let target = Target::from_version(version);
                 println!("Installing {}...", target);
-                download_node_toolchain(target)?;
+
+                match args.value_of("path") {
+                    Some(path) => download_node_toolchain_at_path(target, Path::new(path))?,
+                    None => download_node_toolchain(target)?,
+                }
 
                 if args.is_present("default") {
                     nodeup::change_default_target(target)?;
@@ -153,6 +157,10 @@ fn link_command() -> CLIResult {
 
 fn download_node_toolchain(target: Target) -> CLIResult {
     let download_dir = local::download_dir()?;
+    registry::download_node_toolchain(&download_dir, target).map_err(|e| e.into())
+}
+
+fn download_node_toolchain_at_path(target: Target, download_dir: &Path) -> CLIResult {
     registry::download_node_toolchain(&download_dir, target).map_err(|e| e.into())
 }
 
