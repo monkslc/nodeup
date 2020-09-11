@@ -55,6 +55,13 @@ subcommands:
                         required: false
                         takes_value: false
 
+                    - override:
+                        help: set the newly installed version as the override for the current working directory
+                        short: o
+                        long: override
+                        required: false
+                        takes_value: false
+
             - remove:
                 about: remove an installed version of node
                 args:

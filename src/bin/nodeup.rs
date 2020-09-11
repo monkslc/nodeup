@@ -95,6 +95,10 @@ fn nodeup_command() -> CLIResult {
                 if args.is_present("default") {
                     nodeup::change_default_target(target)?;
                 }
+
+                if args.is_present("override") {
+                    nodeup::override_cwd(target)?;
+                }
             }
             ("remove", args) => {
                 let version = args.unwrap().value_of("version").expect("Version required");
