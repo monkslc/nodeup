@@ -83,6 +83,7 @@ nodeup override list
 ```
 
 **Overriding the version with a file**
+
 Adding a `.nvmrc` file to a directory is the equivalent of setting an override for that directory. An example `.nvmrc` file would look like:
 ```
 12.18.3
