@@ -1,9 +1,9 @@
 # Installing
 *linux*
-`sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.2/nodeup-linux && sudo chmod +x /usr/local/bin/nodeup`
+`sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.3/nodeup-linux && sudo chmod +x /usr/local/bin/nodeup`
 
 *mac*
-`sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.2/nodeup-mac && sudo chmod +x /usr/local/bin/nodeup`
+`sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.3/nodeup-mac && sudo chmod +x /usr/local/bin/nodeup`
 
 # Setup
 Create symlinks for node, npm, and npx that point to nodeup
