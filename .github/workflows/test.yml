@@ -1,0 +1,35 @@
+on:
+  push:
+    tags:
+      - '!v*'
+
+name: Deploy
+
+jobs:
+  test:
+    name: Publish Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+        matrix:
+          include:
+            - os: ubuntu-latest
+              asset_name: nodeup-linux
+
+            - os: macos-latest
+              asset_name: nodeup-macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
