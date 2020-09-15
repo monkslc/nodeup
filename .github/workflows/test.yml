@@ -3,11 +3,11 @@ on:
     tags-ignore:
       - 'v*'
 
-name: Deploy
+name: Test
 
 jobs:
   test:
-    name: Publish Binaries
+    name: Test Nodeup
     runs-on: ${{ matrix.os }}
     strategy:
         matrix:
