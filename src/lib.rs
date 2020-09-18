@@ -63,7 +63,7 @@ pub enum NodeupError {
     )]
     NoVersionFound,
 
-    #[error("Couldn't find target {target} when trying to {task}. Try installing the target by running: nodeup versions add {}", target.version())]
+    #[error("Couldn't find target {target} when trying to {task}. You can install the target by running: nodeup versions add {}", target.version())]
     VersionNotFound { target: Target, task: ErrorTask },
 }
 
@@ -109,11 +109,15 @@ impl fmt::Display for ErrorTask {
     }
 }
 
-// TODO: check that the version is installed before removing
 pub fn remove_node(target: Target) -> NodeupResult<()> {
     use ErrorTask::Removing as task;
 
     let path = local::target_path(&target).map_err(|source| NodeupError::Local { source, task })?;
+
+    if !path.exists() {
+        return Err(NodeupError::VersionNotFound { task, target });
+    };
+
     fs::remove_dir_all(&path).map_err(|source| NodeupError::IO { source, task, path })?;
     Ok(())
 }
