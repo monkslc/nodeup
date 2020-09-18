@@ -2,9 +2,9 @@ use log::warn;
 use std::{
     env, fmt, fs, io,
     io::ErrorKind,
-    os::unix::{fs::symlink, process::CommandExt},
+    os::unix::fs::symlink,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 use thiserror::Error;
 
@@ -62,6 +62,9 @@ pub enum NodeupError {
         "Not sure which version to run. Try setting a default by running nodeup default x.x.x"
     )]
     NoVersionFound,
+
+    #[error("Couldn't find target {target} when trying to {task}. Try installing the target by running: nodeup versions add {}", target.version())]
+    VersionNotFound { target: Target, task: ErrorTask },
 }
 
 #[derive(Debug, Error)]
@@ -182,7 +185,22 @@ pub fn execute_bin<I: std::iter::Iterator<Item = String>>(bin: &str, args: I) ->
                 .map_err(|source| NodeupError::Local { source, task })?;
             let bin_path = target_path.join("bin").join(bin);
 
-            Command::new(&bin_path).args(args).exec();
+            if !bin_path.exists() {
+                return Err(NodeupError::VersionNotFound { task, target });
+            }
+
+            Command::new(&bin_path)
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .args(args)
+                .output()
+                .map_err(|source| NodeupError::IO {
+                    source,
+                    task,
+                    path: bin_path,
+                })?;
+
             Ok(())
         }
         None => Err(NodeupError::NoVersionFound),
