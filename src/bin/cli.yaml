@@ -4,9 +4,11 @@ author: Connor Monks
 about: Easily install and switch between versions of nodejs
 subcommands:
     - override:
+        visible_alias: o
         about: control which version of node is run
         subcommands:
             - add:
+                visible_alias: a
                 about: change the version of node used for the current directory and its descendents
                 args:
                     - version:
@@ -22,6 +24,7 @@ subcommands:
                         takes_value: false
 
             - remove:
+                visible_alias: r
                 about: remove an override that is currently set
                 args:
                     - default:
@@ -32,15 +35,19 @@ subcommands:
                         takes_value: false
 
             - list:
+                visible_alias: l
                 about: list all overrides
 
             - which:
+                visible_alias: w
                 about: show which version of node will get run for the current directory
 
     - versions:
+        visible_alias: v
         about: control which versions of node are installed
         subcommands:
             - add:
+                visible_alias: a
                 about: install a new version of node
                 args:
                     - version:
@@ -70,6 +77,7 @@ subcommands:
                         takes_value: true
 
             - remove:
+                visible_alias: r
                 about: remove an installed version of node
                 args:
                     - version:
@@ -78,15 +86,19 @@ subcommands:
                         help: version of node. ex/ 12.18.3
 
             - list:
+                visible_alias: l
                 about: list the installed versions of node
 
             - lts:
                 about: list the latest long term support version of node
 
     - control:
+        visible_alias: c
         about: nodeup install and setup
         subcommands:
             - link:
+                visible_alias: l
                 about: create links for node, npm, and npx back to nodeup
             - verify:
+                visible_alias: v
                 about: check that everything is properly configured for nodeup
