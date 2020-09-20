@@ -2,7 +2,7 @@ use nodeup::local::*;
 use std::{env, path::PathBuf};
 
 #[test]
-fn find_config_dir() {
+fn find_config_file() {
     env::set_var("NODEUP_CONFIG", "/tmp/config");
     let actual = config_file().unwrap();
     let expected = PathBuf::from("/tmp/config/settings.toml");

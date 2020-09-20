@@ -21,10 +21,15 @@ pub enum LocalError {
     IO { source: io::Error, path: PathBuf },
 }
 
-/// Order of preference for download directory
-/// 1. $NODEUP_DOWNLOADS
-/// 2. $XDG_DATA_HOME/nodeup
-/// 3. $HOME/.local/share/nodeup
+/// Returns the location of the directory where node downloads are stored
+///
+/// ### Order of preference for download directory
+///
+/// | |Linux                    |Mac                                     |Windows                         |
+/// |-|-------------------------|----------------------------------------|--------------------------------|
+/// |1|$NODEUP_DOWNLOADS        |$NODEUP_DOWNLOADS                       |$NODEUP_DOWNLOADS               |
+/// |2|$XDG_DATA_HOME/nodeup    |$HOME/library/Application Support/nodeup|{FOLDERID_RoamingAppData}\nodeup|
+/// |3|$Home/.local/share/nodeup|
 pub fn download_dir() -> LocalResult<PathBuf> {
     let nodeup_bin = env::var_os("NODEUP_DOWNLOADS").map(|dir| PathBuf::from(&dir));
     if let Some(nodeup_bin) = nodeup_bin {
@@ -40,10 +45,15 @@ pub fn target_path(target: &Target) -> LocalResult<PathBuf> {
     download_dir().map(|dir| dir.join(target.to_string()))
 }
 
-/// Order of preference for binary directory
-/// 1. $NODEUP_CONFIG
-/// 2. $XDG_CONFIG_HOME/nodeup
-/// 3. $HOME/.config/nodeup
+/// Returns the location of the nodeup config directory
+///
+/// ### Order of preference for config directory
+///
+/// | |Linux                  |Mac                                     |Windows                         |
+/// |-|-----------------------|----------------------------------------|--------------------------------|
+/// |1|$NODEUP_CONFIG         |$NODEUP_CONFIG                          |$NODEUP_CONFIG                  |
+/// |2|$XDG_CONFIG_HOME/nodeup|$HOME/Library/Application Support/nodeup|{FOLDERID_RoamingAppData}\nodeup|
+/// |3|$HOME/.config          |
 pub fn config_dir() -> LocalResult<PathBuf> {
     let config_dir = env::var_os("NODEUP_CONFIG")
         .map(|dir| PathBuf::from(dir))
@@ -62,6 +72,7 @@ pub fn config_dir() -> LocalResult<PathBuf> {
     }
 }
 
+/// The location to the settings.toml for nodeup
 pub fn config_file() -> LocalResult<PathBuf> {
     config_dir().map(|dir| dir.join(CONFIG_FILE_NAME))
 }
@@ -76,16 +87,18 @@ pub fn transitory_config_file() -> LocalResult<NamedTempFile> {
     })
 }
 
-/// Order of preference for download directory
-/// 1. $NODEUP_LINKS
-/// 2. $XDG_BIN_HOME/nodeup/links
-/// 3. $HOME/.local/bin
+/// Returns the location of the node, npm, and npx symlinks to nodeup
+///
+/// ### Order of preference for links directory
+///
+/// | |Linux           |Mac             |Windows      |
+/// |-|----------------|----------------|-------------|
+/// |1|$NODEUP_LINKS   |$NODEUP_LINKS   |$NODEUP_LINKS|
+/// |2|$HOME/.local/bin|$HOME/.local/bin|TODO         |
 pub fn links() -> LocalResult<PathBuf> {
+    #[cfg(unix)]
     env::var_os("NODEUP_LINKS")
         .map(PathBuf::from)
-        .or_else(|| {
-            env::var_os("XDG_BIN_HOME").map(|dir| PathBuf::from(dir).join("nodeup").join("links"))
-        })
         .or_else(|| dirs::home_dir().map(|dir| dir.join(".local").join("bin")))
         .ok_or(LocalError::NotFound(LINKS_DIR_NOT_FOUND))
 }
