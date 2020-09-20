@@ -17,7 +17,6 @@ tar = "0.4.29"
 tempfile = "3.1.0"
 thiserror = "1.0.20"
 toml = "0.5.6"
-uuid = { version = "0.8.1", features = ["v4"] }
 which = "4.0.2"
 
 [dev-dependencies]
