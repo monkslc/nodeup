@@ -2,14 +2,18 @@ name: nodeup
 version: "0.1.0"
 author: Connor Monks
 about: Easily install and switch between versions of nodejs
+settings:
+  - SubCommandRequiredElseHelp
 subcommands:
     - override:
         visible_alias: o
-        about: control which version of node is run
+        about: select the version of node to be run
+        settings:
+          - SubCommandRequiredElseHelp
         subcommands:
             - add:
                 visible_alias: a
-                about: change the version of node used for the current directory and its descendents
+                about: add an override that changes the version of node to be run for the current directory and its descendents
                 args:
                     - version:
                         help: version of node. ex/ 12.18.3
@@ -44,7 +48,9 @@ subcommands:
 
     - versions:
         visible_alias: v
-        about: control which versions of node are installed
+        about: control which versions of node are installed on your system
+        settings:
+          - SubCommandRequiredElseHelp
         subcommands:
             - add:
                 visible_alias: a
@@ -94,7 +100,9 @@ subcommands:
 
     - control:
         visible_alias: c
-        about: nodeup install and setup
+        about: nodeup install and setup helper commands
+        settings:
+          - SubCommandRequiredElseHelp
         subcommands:
             - link:
                 visible_alias: l
