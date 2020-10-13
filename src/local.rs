@@ -56,7 +56,7 @@ pub fn target_path(target: &Target) -> LocalResult<PathBuf> {
 /// |3|$HOME/.config          |
 pub fn config_dir() -> LocalResult<PathBuf> {
     let config_dir = env::var_os("NODEUP_CONFIG")
-        .map(|dir| PathBuf::from(dir))
+        .map(PathBuf::from)
         .or_else(|| dirs::config_dir().map(|dir| dir.join(NODEUP)));
 
     match config_dir {
