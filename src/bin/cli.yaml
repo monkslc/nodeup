@@ -28,7 +28,7 @@ subcommands:
                         takes_value: false
 
             - remove:
-                visible_alias: r
+                visible_alias: rm
                 about: remove an override that is currently set
                 args:
                     - default:
@@ -39,7 +39,7 @@ subcommands:
                         takes_value: false
 
             - list:
-                visible_alias: l
+                visible_alias: ls
                 about: list all overrides
 
             - which:
@@ -83,7 +83,7 @@ subcommands:
                         takes_value: true
 
             - remove:
-                visible_alias: r
+                visible_alias: rm
                 about: remove an installed version of node
                 args:
                     - version:
@@ -92,7 +92,7 @@ subcommands:
                         help: version of node. ex/ 12.18.3
 
             - list:
-                visible_alias: l
+                visible_alias: ls
                 about: list the installed versions of node
 
             - lts:
