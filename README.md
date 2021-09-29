@@ -7,7 +7,7 @@ sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/d
 
 **mac**
 ```
-sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.5/nodeup-mac \
+sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.5/nodeup-macos \
 && sudo chmod +x /usr/local/bin/nodeup
 ```
 
