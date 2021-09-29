@@ -1,13 +1,13 @@
 # Installing
 **linux**
 ```
-sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.5/nodeup-linux \
+sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.6/nodeup-linux \
 && sudo chmod +x /usr/local/bin/nodeup
 ```
 
 **mac**
 ```
-sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.5/nodeup-macos \
+sudo curl -Lo /usr/local/bin/nodeup https://github.com/monkslc/nodeup/releases/download/v0.0.6/nodeup-macos \
 && sudo chmod +x /usr/local/bin/nodeup
 ```
 
